@@ -1,0 +1,892 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Point da Sueli | Cardápio</title>
+<meta name="description" content="Veja o que tem hoje no Point da Sueli e faça seu pedido online.">
+<meta property="og:title" content="Point da Sueli | Cardápio de hoje">
+<meta property="og:description" content="Marmitas, pratinhos e muito mais. Veja o que tem hoje e faça seu pedido.">
+<meta property="og:image" content="img/og.jpg">
+<meta name="theme-color" content="#121212">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="img/icone-192.png">
+<link rel="apple-touch-icon" href="img/icone-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;1,800&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --carvao:#2a1a12; --carvao-2:#3a2519; --giz:#fff8ee; --brasa:#c8432a; --brasa-esc:#a5341f;
+  --terracota:#b5512a; --mostarda:#e8b23a; --creme:#f7efe3;
+  --papel:#ffffff; --fundo:#f7f0e6; --tinta:#2a1a12; --cinza:#76665a; --linha:#e8dccb; --ok:#2e8b57;
+  --r:14px; --sombra:0 10px 30px rgba(18,18,18,.12);
+}
+*{box-sizing:border-box;margin:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--fundo);color:var(--tinta);font:400 15px/1.5 Montserrat,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body.travado{overflow:hidden}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+:focus-visible{outline:3px solid var(--brasa);outline-offset:2px}
+[hidden]{display:none!important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- topo com foto ---------- */
+.hero{position:relative;color:var(--giz);background:#3a2519 url(img/topo.jpg) center/cover no-repeat;padding:18px 16px 70px}
+.hero::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(42,26,18,.55) 0%,rgba(42,26,18,.78) 55%,rgba(42,26,18,.92) 100%)}
+.hero-in{position:relative;max-width:660px;margin:0 auto}
+.hero-linha{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.logo{display:block;width:150px;height:auto}
+.status{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:#fff;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.18);padding:7px 12px;border-radius:999px;text-align:left;max-width:60%}
+.status i{width:8px;height:8px;border-radius:50%;background:#bbb;flex:none}
+.status.aberto i{background:#6be29a;box-shadow:0 0 0 4px rgba(107,226,154,.2)}
+.hero-data{margin-top:26px;font:700 clamp(30px,8vw,40px)/1.05 Oswald,sans-serif;letter-spacing:.3px;}
+.hero-sub{font:600 22px Caveat,cursive;color:var(--mostarda);margin-top:4px}
+.turnos{display:inline-flex;margin-top:16px;padding:4px;border-radius:999px;background:rgba(255,255,255,.12);backdrop-filter:blur(4px)}
+.turnos button{padding:8px 20px;border-radius:999px;font:500 16px Oswald,sans-serif;letter-spacing:.3px;color:rgba(255,255,255,.85)}
+.turnos button[aria-pressed=true]{background:var(--mostarda);color:var(--carvao)}
+/* cartão do cardápio do dia */
+.dia{position:relative;max-width:660px;margin:-54px auto 0;padding:0 16px}
+.dia-card{background:var(--papel);border-radius:20px;box-shadow:0 18px 40px rgba(42,26,18,.16);padding:20px 18px 18px;border-top:5px solid var(--terracota)}
+.dia-topo{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.dia-topo h2{font:700 24px Oswald,sans-serif;letter-spacing:.2px}
+.dia-tag{font-size:12px;font-weight:700;background:#fbeed2;color:#7a5410;padding:4px 10px;border-radius:999px}
+.prot-lista{list-style:none;padding:0;margin:14px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:10px 16px}
+@media(max-width:420px){.prot-lista{grid-template-columns:1fr}}
+.prot-lista li{display:flex;align-items:flex-start;gap:9px;font-weight:700;font-size:15.5px;line-height:1.3}
+.prot-lista li::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--terracota);flex:none;margin-top:6px}
+.prot-lista li.acabou{color:#b3a596;text-decoration:line-through}
+.prot-lista li.acabou::before{background:#d9cdbd}
+.prot-lista li small{font-size:11px;font-weight:700;color:var(--brasa);text-decoration:none;margin-left:4px}
+.acomp{margin-top:14px;font-size:13.5px;color:var(--cinza);background:var(--fundo);border-radius:12px;padding:10px 12px}
+.acomp b{color:var(--tinta)}
+.precos-dia{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:14px}
+.preco-dia{display:flex;align-items:center;gap:10px;text-align:left;border:1.5px solid var(--linha);border-radius:14px;padding:8px 10px 8px 8px;background:var(--papel)}
+.preco-dia img{width:46px;height:46px;border-radius:10px;object-fit:cover;flex:none}
+.preco-dia span{flex:1;min-width:0;font:600 15px/1.2 Oswald,sans-serif}
+.preco-dia span small{display:block;font:500 11.5px Montserrat,sans-serif;color:var(--cinza);margin-top:2px}
+.preco-dia b{display:block;font:700 16px Oswald,sans-serif;color:var(--terracota);white-space:nowrap;margin-top:2px}
+.dia-acoes{display:flex;gap:10px;margin-top:16px}
+.dia-acoes .btn{flex:1;padding:13px}
+.aviso-turno{margin-top:14px;font-size:13px;color:#7a2a17;background:#fbe5dc;border:1px solid #f1c3b1;padding:9px 12px;border-radius:10px}
+.sem-prot{margin-top:12px;color:var(--cinza);font-size:14px}
+.info-loja{display:grid;gap:4px;margin:6px 0 14px;font-size:13px}
+
+/* ---------- menu ---------- */
+main{max-width:660px;margin:0 auto;padding:0 16px 120px}
+.repetir{margin-top:16px;display:flex;align-items:center;gap:12px;background:var(--papel);border:1px solid var(--linha);border-radius:var(--r);padding:12px 14px}
+.repetir p{flex:1;min-width:0;font-size:13px;color:var(--cinza)}
+.repetir p strong{display:block;color:var(--tinta);font-size:14px}
+.cats{position:sticky;top:0;z-index:5;background:var(--fundo);margin:0 -16px;padding:12px 16px 0;display:flex;gap:22px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--linha)}
+.cats::-webkit-scrollbar{display:none}
+.cats a{flex:none;padding:6px 0 11px;font:500 16px Oswald,sans-serif;letter-spacing:.2px;color:var(--cinza);text-decoration:none;border-bottom:3px solid transparent}
+.cats a.ativo{color:var(--tinta);border-color:var(--brasa)}
+.secao{padding-top:22px;scroll-margin-top:56px}
+.secao>h2{font:700 26px Oswald,sans-serif;letter-spacing:.2px;margin-bottom:4px}
+.item{display:flex;gap:14px;padding:16px 0;border-bottom:1px dashed var(--linha)}
+.item:last-child{border-bottom:0}
+.thumb{width:68px;height:68px;border-radius:12px;flex:none;object-fit:cover;background:#111}
+.item-c{flex:1;min-width:0}
+.linha-preco{display:flex;align-items:baseline;gap:8px}
+.linha-preco h3{font:600 18px/1.25 Oswald,sans-serif;letter-spacing:.2px}
+.linha-preco .pont{flex:1;border-bottom:2px dotted #c9c4bc;transform:translateY(-4px);min-width:12px}
+.linha-preco b{font:600 18px Oswald,sans-serif;white-space:nowrap}
+.item-base{display:flex;align-items:flex-end;gap:12px;margin-top:4px}
+.item-base p{flex:1;min-width:0;color:var(--cinza);font-size:13px}
+.item-acao{margin-left:auto;display:flex;align-items:center;gap:8px;flex:none}
+.item-acao .sub{font-size:12px}
+.tag{font-size:12px;font-weight:700;color:var(--brasa);background:#fdeceb;padding:3px 9px;border-radius:999px}
+.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border-radius:12px;font-weight:700;font-size:14px;line-height:1.1}
+.btn-p{background:var(--brasa);color:#fff}
+.btn-p:hover{background:var(--brasa-esc)}
+.btn-p:disabled{opacity:.5;cursor:default}
+.btn-s{background:var(--carvao);color:#fff}
+.btn-l{border:1.5px solid var(--linha);background:var(--papel)}
+.btn-add{padding:8px 16px;border-radius:999px}
+.btn-w{width:100%}
+.qtd{display:inline-flex;align-items:center;border:1.5px solid var(--tinta);border-radius:999px;overflow:hidden}
+.qtd button{width:36px;height:34px;font-size:20px;font-weight:600}
+.qtd span{min-width:22px;text-align:center;font-weight:700}
+.vazio{padding:40px 10px;text-align:center;color:var(--cinza)}
+footer{max-width:660px;margin:0 auto;padding:10px 16px 130px;text-align:center;font-size:12px;color:var(--cinza)}
+footer a{color:inherit}
+
+/* ---------- barra do carrinho e do pedido ---------- */
+.barra{position:fixed;left:12px;right:12px;bottom:12px;z-index:20;max-width:636px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:14px 18px;border-radius:16px;background:var(--brasa);color:#fff;box-shadow:0 14px 34px rgba(224,38,28,.35);font-weight:700}
+.barra .n{background:#fff;color:var(--brasa);border-radius:999px;min-width:26px;height:26px;display:grid;place-items:center;font-size:13px}
+.barra .t{flex:1;text-align:left}
+.barra-pedido{position:fixed;left:12px;right:12px;bottom:12px;z-index:19;max-width:636px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:16px;background:var(--carvao);color:#fff;box-shadow:var(--sombra);font-size:14px;text-align:left}
+.barra-pedido .pulso{width:10px;height:10px;border-radius:50%;background:#3fd27f;flex:none;animation:pulso 1.6s infinite}
+.barra-pedido.final .pulso{animation:none;background:#888}
+.barra-pedido span{flex:1}
+.barra.com-pedido{bottom:74px}
+@keyframes pulso{0%{box-shadow:0 0 0 0 rgba(63,210,127,.6)}100%{box-shadow:0 0 0 10px rgba(63,210,127,0)}}
+
+/* ---------- folhas (modais) ---------- */
+.modal{position:fixed;inset:0;z-index:50;background:rgba(18,18,18,.55);display:flex;align-items:flex-end;justify-content:center}
+@media(min-width:720px){.modal{align-items:center}}
+.folha{background:var(--papel);width:100%;max-width:560px;max-height:94vh;overflow:auto;border-radius:22px 22px 0 0;padding:22px 18px 26px;animation:sobe .22s ease-out}
+@media(min-width:720px){.folha{border-radius:22px}}
+@keyframes sobe{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
+.folha-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px}
+.folha h2{font:700 25px/1.15 Oswald,sans-serif;letter-spacing:.2px}
+.fechar{width:36px;height:36px;border-radius:50%;background:var(--fundo);font-size:22px;line-height:1;flex:none}
+.sub{color:var(--cinza);font-size:13px}
+.bloco{margin-top:20px}
+.bloco>h3{font:600 17px Oswald,sans-serif;letter-spacing:.2px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:baseline}
+.bloco>h3 small{font:600 12px Montserrat,sans-serif;color:var(--cinza)}
+.bloco>h3 small.ok{color:var(--ok)}
+.escolhas{display:grid;gap:8px}
+.escolha{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1.5px solid var(--linha);border-radius:12px;background:var(--papel);text-align:left;width:100%}
+.escolha.sel{border-color:var(--tinta);background:#faf9f7}
+.escolha .nome{flex:1;font-weight:600}
+.escolha.off{opacity:.45;cursor:not-allowed}
+.escolha .qtd{border-width:1.5px}
+.radio{width:20px;height:20px;border-radius:50%;border:2px solid #b9b3ab;flex:none;display:grid;place-items:center}
+.escolha.sel .radio{border-color:var(--tinta)}
+.escolha.sel .radio::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--tinta)}
+.opcoes{display:flex;flex-wrap:wrap;gap:8px}
+.opcao{padding:10px 14px;border:1.5px solid var(--linha);border-radius:12px;font-weight:600;font-size:14px;background:var(--papel)}
+.opcao[aria-pressed=true]{border-color:var(--tinta);background:var(--carvao);color:#fff}
+label.campo{display:block;margin-top:12px;font-size:13px;font-weight:600;color:var(--cinza)}
+.campo input,.campo textarea,.campo select{display:block;width:100%;margin-top:6px;padding:12px 13px;border-radius:12px;border:1.5px solid var(--linha);background:#fff;color:var(--tinta);font-weight:500;outline:none}
+.campo input:focus,.campo textarea:focus,.campo select:focus{border-color:var(--tinta)}
+.duas{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.linha-car{display:flex;gap:10px;align-items:flex-start;padding:12px 0;border-bottom:1px dashed var(--linha)}
+.linha-car .c{flex:1;min-width:0}
+.linha-car strong{font-weight:700}
+.linha-car small{display:block;color:var(--cinza);font-size:12.5px}
+.linha-car .v{font:600 16px Oswald,sans-serif;white-space:nowrap}
+.resumo{margin-top:18px;border-top:2px solid var(--tinta);padding-top:10px}
+.resumo div{display:flex;justify-content:space-between;padding:3px 0;font-size:14px}
+.resumo .desc{color:var(--ok);font-weight:600}
+.resumo .total{font:700 22px Oswald,sans-serif;padding-top:8px}
+.nota{margin-top:8px;font-size:13px;padding:10px 12px;border-radius:10px;background:var(--fundo)}
+.nota.ok{background:#e8f6ee;color:#14663a}
+.erro{color:var(--brasa);font-weight:600;font-size:13px;margin-top:10px;min-height:1em}
+.rodape-folha{position:sticky;bottom:-26px;background:var(--papel);padding:14px 0 4px;margin-top:10px}
+
+/* acompanhamento */
+.etapas{display:grid;margin:22px 0 8px}
+.etapa{position:relative;display:flex;flex-direction:column;align-items:center;gap:7px;font-size:11.5px;font-weight:600;color:var(--cinza);text-align:center}
+.etapa::before{content:"";position:absolute;top:12px;right:50%;width:100%;height:3px;background:var(--linha)}
+.etapa:first-child::before{display:none}
+.etapa i{position:relative;z-index:1;width:26px;height:26px;border-radius:50%;background:var(--papel);border:3px solid var(--linha)}
+.etapa.feita{color:var(--tinta)}
+.etapa.feita::before{background:var(--tinta)}
+.etapa.feita i{background:var(--tinta);border-color:var(--tinta)}
+.etapa.atual i{background:var(--brasa);border-color:var(--brasa);box-shadow:0 0 0 6px rgba(224,38,28,.16)}
+.etapas.cancel{opacity:.35}
+.msg-status{font:600 18px/1.35 Oswald,sans-serif;margin-top:8px;text-align:center}
+.msg-status.cancel{color:var(--brasa)}
+.pix{margin-top:18px;border:2px dashed var(--tinta);border-radius:14px;padding:14px}
+.pix-chave{display:flex;gap:8px;align-items:center;margin-top:8px;background:var(--fundo);border-radius:10px;padding:8px 8px 8px 12px}
+.pix-chave span{flex:1;min-width:0;font-weight:700;letter-spacing:.3px;word-break:break-all}
+
+/* arte de abertura */
+.arte-modal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:14px}
+.arte-modal img{max-width:100%;max-height:calc(100vh - 150px);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.arte-acoes{display:flex;gap:10px;width:100%;max-width:420px}
+.arte-acoes .btn{flex:1;padding:14px}
+.arte-acoes .btn-l{background:transparent;color:#fff;border-color:rgba(255,255,255,.35)}
+
+#toast{position:fixed;left:50%;top:14px;transform:translate(-50%,-20px);z-index:99;background:var(--carvao);color:#fff;padding:12px 18px;border-radius:12px;font-weight:600;font-size:14px;opacity:0;pointer-events:none;transition:.25s;max-width:92vw;text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+.carregando{padding:60px 0;text-align:center;color:var(--cinza)}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-in">
+    <h1 class="sr" id="nomeLoja">Point da Sueli</h1>
+    <div class="hero-linha">
+      <img class="logo" src="img/logo.png" alt="Point da Sueli, restaurante e pratinho desde 2008" width="540" height="306">
+      <span class="status" id="status"><i></i><span>Carregando…</span></span>
+    </div>
+    <p class="hero-data" id="heroData"></p>
+    <p class="hero-sub" id="slogan"></p>
+    <div><div class="turnos" id="turnos" role="group" aria-label="Turno do cardápio" hidden></div></div>
+  </div>
+</header>
+<section class="dia" aria-labelledby="diaTitulo">
+  <div class="dia-card">
+    <div class="dia-topo"><h2 id="diaTitulo">Cardápio de hoje</h2><span class="dia-tag" id="diaTag"></span></div>
+    <ul class="prot-lista" id="pratos"></ul>
+    <p class="sem-prot" id="semProt" hidden>O cardápio de hoje ainda vai ser atualizado.</p>
+    <p class="acomp" id="acomp" hidden></p>
+    <div class="precos-dia" id="precosDia"></div>
+    <p class="aviso-turno" id="avisoTurno" hidden></p>
+    <div class="dia-acoes"><a class="btn btn-p" href="#cats" id="btnIrMenu">Fazer pedido</a><button class="btn btn-l" id="btnVerArte" hidden>Ver arte do dia</button></div>
+  </div>
+</section>
+
+<main>
+  <div class="repetir" id="repetir" hidden>
+    <p><strong>Pedir de novo?</strong><span id="repetirTxt"></span></p>
+    <button class="btn btn-s" id="btnRepetir">Repetir</button>
+  </div>
+  <nav class="cats" id="cats" aria-label="Categorias"></nav>
+  <div id="lista"><p class="carregando">Carregando o cardápio…</p></div>
+</main>
+
+<footer>
+  <div class="info-loja" id="infoLoja"></div>
+  <p><a href="painel.html">Área da loja</a></p>
+  <p style="margin-top:6px">Cardápio digital por <a href="https://instagram.com/salaessol" target="_blank" rel="noopener">Sales Soluções</a></p>
+</footer>
+
+<button class="barra" id="barra" hidden><span class="n" id="barraN">0</span><span class="t">Ver pedido</span><span id="barraTotal"></span></button>
+<button class="barra-pedido" id="barraPedido" hidden><i class="pulso"></i><span id="barraPedidoTxt"></span><b>Ver</b></button>
+
+<!-- escolher opções do item -->
+<div class="modal" id="mItem" hidden>
+  <div class="folha" role="dialog" aria-modal="true" aria-labelledby="itemNome">
+    <div class="folha-topo"><div><h2 id="itemNome"></h2><p class="sub" id="itemDesc"></p></div><button class="fechar" data-fechar aria-label="Fechar">×</button></div>
+    <div class="bloco" id="blocoProt" hidden><h3><span id="protTitulo">Escolha a proteína</span><small id="protConta"></small></h3><div class="escolhas" id="protLista"></div></div>
+    <div class="bloco" id="blocoSabor" hidden><h3>Sabor</h3><div class="opcoes" id="saborLista"></div></div>
+    <label class="campo">Alguma observação? <input id="itemObs" maxlength="120" placeholder="Ex.: sem feijão, mais arroz"></label>
+    <div class="rodape-folha" style="display:flex;gap:12px;align-items:center">
+      <div class="qtd"><button id="itemMenos" aria-label="Diminuir">−</button><span id="itemQtd">1</span><button id="itemMais" aria-label="Aumentar">+</button></div>
+      <button class="btn btn-p" style="flex:1;padding:14px" id="btnAddItem">Adicionar</button>
+    </div>
+    <p class="erro" id="itemErro"></p>
+  </div>
+</div>
+
+<!-- carrinho / finalizar -->
+<div class="modal" id="mCarrinho" hidden>
+  <div class="folha" role="dialog" aria-modal="true" aria-labelledby="carTitulo">
+    <div class="folha-topo"><div><h2 id="carTitulo">Seu pedido</h2><p class="sub" id="carTurno"></p></div><button class="fechar" data-fechar aria-label="Fechar">×</button></div>
+    <div id="carLinhas"></div>
+
+    <div class="bloco" id="blocoReceber"><h3>Como você quer receber?</h3><div class="opcoes" id="tipos"></div>
+      <div id="boxEndereco" hidden>
+        <label class="campo">Rua e número <input id="cEnd" maxlength="120" autocomplete="address-line1" placeholder="Ex.: Rua Antero de Quental, 301"></label>
+        <div class="duas"><label class="campo">Bairro <input id="cBairro" maxlength="60" placeholder="Ex.: São Bento"></label>
+        <label class="campo">Complemento <input id="cComp" maxlength="60" placeholder="Apto, bloco, casa"></label></div>
+        <label class="campo">Ponto de referência <input id="cRef" maxlength="80" placeholder="Opcional"></label>
+      </div>
+    </div>
+
+    <div class="bloco" id="blocoQuando" hidden><h3>Quando?</h3><div class="opcoes" id="quando"></div>
+      <label class="campo" id="boxHorario" hidden>Horário <select id="cHorario"></select></label>
+    </div>
+
+    <div class="bloco"><h3>Seus dados</h3>
+      <label class="campo">Nome <input id="cNome" maxlength="60" autocomplete="name"></label>
+      <label class="campo">WhatsApp <input id="cTel" inputmode="tel" autocomplete="tel" maxlength="16" placeholder="(85) 99999-9999"></label>
+      <p class="nota" id="fidNota" hidden></p>
+    </div>
+
+    <div class="bloco" id="blocoCupom" hidden><h3>Cupom de desconto</h3>
+      <div style="display:flex;gap:8px"><label class="campo" style="flex:1;margin:0"><span class="sr">Código do cupom</span><input id="cCupom" maxlength="20" placeholder="Digite o código" style="margin:0;text-transform:uppercase"></label><button class="btn btn-l" id="btnCupom">Aplicar</button></div>
+      <p class="nota ok" id="cupomNota" hidden></p>
+    </div>
+
+    <div class="bloco"><h3>Pagamento</h3><div class="opcoes" id="pags"></div>
+      <p class="sub" id="pagDica" style="margin-top:8px"></p>
+      <label class="campo" id="boxTroco" hidden>Troco para quanto? <input id="cTroco" inputmode="decimal" maxlength="10" placeholder="Deixe vazio se não precisar"></label>
+    </div>
+
+    <label class="campo">Observações do pedido <textarea id="cObs" rows="2" maxlength="300" placeholder="Opcional"></textarea></label>
+
+    <div class="resumo" id="resumo"></div>
+    <p class="erro" id="carErro"></p>
+    <div class="rodape-folha"><button class="btn btn-p btn-w" style="padding:16px;font-size:16px" id="btnFinalizar">Finalizar pedido</button></div>
+  </div>
+</div>
+
+<!-- acompanhar pedido -->
+<div class="modal" id="mPedido" hidden>
+  <div class="folha" role="dialog" aria-modal="true" aria-labelledby="pedTitulo">
+    <div class="folha-topo"><div><h2 id="pedTitulo">Pedido enviado</h2><p class="sub">Esta tela se atualiza sozinha.</p></div><button class="fechar" data-fechar aria-label="Fechar">×</button></div>
+    <div class="etapas" id="etapas"></div>
+    <p class="msg-status" id="pedMsg"></p>
+    <div class="pix" id="pixBox" hidden>
+      <strong>Pague <span id="pixValor"></span> no Pix</strong>
+      <div class="pix-chave"><span id="pixChave"></span><button class="btn btn-s" id="btnCopiarPix">Copiar</button></div>
+      <p class="sub" style="margin-top:8px">Depois mostre o comprovante na entrega ou retirada.</p>
+    </div>
+    <div style="display:grid;gap:10px;margin-top:20px">
+      <a class="btn btn-l btn-w" id="btnZapLoja" target="_blank" rel="noopener" hidden>Falar com a loja no WhatsApp</a>
+      <button class="btn btn-s btn-w" data-fechar>Voltar ao cardápio</button>
+    </div>
+  </div>
+</div>
+
+<!-- arte do dia -->
+<div class="arte-modal" id="mArte" hidden role="dialog" aria-modal="true" aria-label="Cardápio de hoje">
+  <img id="arteImg" alt="Arte com o cardápio de hoje">
+  <div class="arte-acoes">
+    <button class="btn btn-l" id="btnShareArte">Compartilhar</button>
+    <button class="btn btn-p" id="btnFecharArte">Fazer pedido</button>
+  </div>
+</div>
+
+<script src="config.js?v=1"></script>
+<script>if (!/^https?:\/\//.test(APP.API_URL || '')) document.write('<script src="demo.js?v=1"><\/script>');</script>
+<script src="base.js?v=1"></script>
+<script>
+const { $, $$, brl, esc, norm, digitos, numBR, mascaraTel, ls, rpc, min, hhmm, TURNOS, nomeTurno, turnoAtivo, turnoEm, toast } = B;
+const L = APP.LOJA;
+const K = { cache: 'cache_' + L, car: 'carrinho_' + L, cli: 'cliente_' + L, ult: 'ultimo_' + L, ped: 'meupedido_' + L, arte: 'arte_' + L };
+
+let D = null;                 // dados do cardápio
+let turno = null;             // turno sendo visto
+let carrinho = ls.get(K.car, { turno: null, linhas: [] });
+let sel = {};                 // escolhas no carrinho (tipo, pagamento, quando)
+let cupom = null, fid = null;
+let itemAberto = null, itemEsc = { prot: {}, sabor: '', qtd: 1 };
+let ultimaCarga = 0;
+
+/* ================= DADOS ================= */
+async function carregar(silencioso) {
+  const cache = ls.get(K.cache);
+  if (!D && cache) aplicar(cache);
+  try {
+    const r = await rpc('cardapio', { p_loja: L });
+    if (!r || !r.ok) throw new Error(r && r.erro);
+    ultimaCarga = Date.now();
+    ls.set(K.cache, r);
+    aplicar(r);
+  } catch (e) {
+    if (!D) $('#lista').innerHTML = `<div class="vazio">Não foi possível carregar o cardápio.<br><button class="btn btn-s" style="margin-top:12px" onclick="carregar()">Tentar de novo</button></div>`;
+    else if (!silencioso) toast('Sem conexão. Mostrando o último cardápio salvo.');
+  }
+}
+function aplicar(r) {
+  const primeira = !D;
+  D = r; B.acertarRelogio(r.agora);
+  const cfg = D.config;
+  document.title = D.nome + ' | Cardápio';
+  $('#nomeLoja').textContent = D.nome;
+  $('#slogan').textContent = cfg.slogan || '';
+  if (!turno || !turnoAtivo(cfg, turno)) turno = turnoPadrao();
+  renderTudo();
+  if (primeira) { abrirArteSeHouver(); mostrarBarraPedido(); acompanhar(); }
+}
+
+/* ================= HORÁRIOS ================= */
+const cfg = () => D.config;
+function turnoAgora() { return turnoEm(cfg(), B.minutosAgora()); }
+function turnoPadrao() {
+  const a = turnoAgora(); if (a) return a;
+  const m = B.minutosAgora();
+  const prox = TURNOS.find(t => turnoAtivo(cfg(), t) && min(cfg().turnos[t].inicio) > m);
+  return prox || TURNOS.find(t => turnoAtivo(cfg(), t)) || 'almoco';
+}
+function turnoAindaHoje(t) { return turnoAtivo(cfg(), t) && min(cfg().turnos[t].fim) > B.minutosAgora() + 15; }
+const modo = () => cfg().modo || 'auto';
+function podePedirAgora(t) {
+  if (cfg().pedidos_ativos === false || modo() === 'fechada') return false;
+  return modo() === 'aberta' || turnoAgora() === t;
+}
+function podeAgendar(t) { return cfg().pedidos_ativos !== false && modo() !== 'fechada' && !!cfg().encomenda && turnoAindaHoje(t); }
+const podePedir = t => podePedirAgora(t) || podeAgendar(t);
+
+function textoStatus() {
+  const c = cfg();
+  if (c.pedidos_ativos === false) return [false, 'Somente cardápio no momento'];
+  if (modo() === 'fechada') return [false, 'Fechado agora'];
+  if (modo() === 'aberta') return [true, 'Aberto agora'];
+  const a = turnoAgora();
+  if (a) return [true, `Aberto agora, ${nomeTurno(c, a).toLowerCase()} até ${c.turnos[a].fim}`];
+  const m = B.minutosAgora();
+  const prox = TURNOS.find(t => turnoAtivo(c, t) && min(c.turnos[t].inicio) > m);
+  if (prox) return [false, `Fechado agora. ${nomeTurno(c, prox)} a partir das ${c.turnos[prox].inicio}`];
+  const pri = TURNOS.find(t => turnoAtivo(c, t));
+  return [false, pri ? `Fechado agora. Amanhã a partir das ${c.turnos[pri].inicio}` : 'Fechado agora'];
+}
+
+/* ================= DISPONIBILIDADE ================= */
+const protsDoTurno = t => (D.proteinas || []).filter(p => p[t]);
+const protsDisp = t => protsDoTurno(t).filter(p => !p.esgotado);
+const doTurno = (p, t) => !p.turnos || !p.turnos.length || p.turnos.includes(t);
+function restantes(t) {
+  const l = cfg().limite;
+  if (!l || !l.ativo) return Infinity;
+  const usado = carrinho.turno === t ? carrinho.linhas.filter(x => x.lim).reduce((s, x) => s + x.qtd, 0) : 0;
+  return Math.max(0, (Number(l[t]) || 0) - ((D.vendidos || {})[t] || 0) - usado);
+}
+function motivoIndisp(p) {
+  if (p.esgotado) return 'Esgotado';
+  if (p.conta_limite && cfg().limite && cfg().limite.ativo && restantes(turno) <= 0 && !qtdNoCarrinho(p.id)) return 'Esgotado hoje';
+  if (p.qtd_proteinas > 0 && !protsDisp(turno).length) return 'Sem proteínas hoje';
+  return '';
+}
+
+/* ================= RENDER ================= */
+function renderTudo() { renderQuadro(); renderMenu(); renderRepetir(); atualizarBarra(); }
+
+function acompDo(t) { const a = cfg().acompanhamentos || {}; return String(a[t] || '').trim(); }
+function destaquesDo(t) { return D.produtos.filter(p => doTurno(p, t) && p.destaque && !p.esgotado).slice(0, 4); }
+function renderQuadro() {
+  const c = cfg();
+  const [aberto, txt] = textoStatus();
+  $('#status').classList.toggle('aberto', aberto);
+  $('#status span').textContent = txt;
+  $('#heroData').textContent = (d => d.charAt(0).toUpperCase() + d.slice(1))(B.dataExtenso(B.agoraLoja()));
+  $('#slogan').textContent = c.slogan || '';
+  const ativos = TURNOS.filter(t => turnoAtivo(c, t));
+  $('#turnos').hidden = ativos.length < 2;
+  $('#turnos').innerHTML = ativos.map(t => `<button data-turno="${t}" aria-pressed="${t === turno}">${esc(nomeTurno(c, t))}</button>`).join('');
+  const tt = c.turnos[turno] || {};
+  $('#diaTitulo').textContent = nomeTurno(c, turno) + ' de hoje';
+  $('#diaTag').textContent = tt.inicio ? `${tt.inicio} às ${tt.fim}` : '';
+  const prots = protsDoTurno(turno);
+  $('#pratos').innerHTML = prots.map(p => `<li class="${p.esgotado ? 'acabou' : ''}"><span>${esc(p.nome)}${p.esgotado ? '<small>acabou</small>' : ''}</span></li>`).join('');
+  $('#semProt').hidden = !!prots.length;
+  const ac = acompDo(turno);
+  $('#acomp').hidden = !ac; $('#acomp').innerHTML = `<b>Acompanha:</b> ${esc(ac)}`;
+  $('#precosDia').innerHTML = destaquesDo(turno).map(p => `<button class="preco-dia" data-add="${p.id}">
+    ${p.foto ? `<img src="${esc(p.foto)}" alt="" loading="lazy" onerror="this.remove()">` : ''}
+    <span>${esc(p.nome)}<b>${brl(p.preco)}</b>${p.qtd_proteinas ? `<small>${p.qtd_proteinas === 1 ? '1 proteína' : p.qtd_proteinas + ' proteínas'}</small>` : ''}</span></button>`).join('');
+  $('#btnVerArte').hidden = !protsDisp(turno).length;
+  $('#btnIrMenu').hidden = !podePedir(turno);
+  const av = $('#avisoTurno');
+  if (c.pedidos_ativos !== false && modo() !== 'fechada' && !podePedirAgora(turno)) {
+    av.hidden = false;
+    av.textContent = podeAgendar(turno)
+      ? `Você pode encomendar agora para o ${nomeTurno(c, turno).toLowerCase()} (a partir das ${tt.inicio}).`
+      : `Pedidos do ${nomeTurno(c, turno).toLowerCase()} abrem às ${tt.inicio}.`;
+  } else av.hidden = true;
+  const end = c.endereco ? `<span>${esc(c.endereco)}</span>` : '';
+  const zap = digitos(c.whatsapp);
+  $('#infoLoja').innerHTML = end + (zap.length >= 10 ? `<span>WhatsApp: <a href="https://wa.me/55${zap}" target="_blank" rel="noopener">${esc(B.mascaraTel(zap))}</a></span>` : '');
+}
+
+function categorias() {
+  const ordem = cfg().categorias || [];
+  const cats = [...new Set(D.produtos.filter(p => doTurno(p, turno)).map(p => p.categoria))];
+  return cats.sort((a, b) => (ordem.indexOf(a) + 1 || 999) - (ordem.indexOf(b) + 1 || 999));
+}
+const idCat = c => 'cat-' + norm(c).replace(/[^a-z0-9]+/g, '-');
+function qtdNoCarrinho(id) { return carrinho.turno === turno ? carrinho.linhas.filter(l => l.id === id).reduce((s, l) => s + l.qtd, 0) : 0; }
+
+function renderMenu() {
+  const cats = categorias();
+  $('#cats').innerHTML = cats.map((c, i) => `<a href="#${idCat(c)}" class="${i === 0 ? 'ativo' : ''}">${esc(c)}</a>`).join('');
+  const pode = podePedir(turno);
+  $('#lista').innerHTML = cats.length ? cats.map(c => `
+    <section class="secao" id="${idCat(c)}"><h2>${esc(c)}</h2>${
+      D.produtos.filter(p => doTurno(p, turno) && p.categoria === c).map(p => {
+        const ind = motivoIndisp(p), q = qtdNoCarrinho(p.id);
+        const simples = !p.qtd_proteinas && !(p.sabores && p.sabores.length);
+        let acao = '';
+        if (ind) acao = `<span class="tag">${ind}</span>`;
+        else if (pode) acao = simples && q
+          ? `<div class="qtd"><button data-menos="${p.id}" aria-label="Tirar um">−</button><span>${q}</span><button data-mais="${p.id}" aria-label="Adicionar mais um">+</button></div>`
+          : `${q ? `<span class="sub">${q} no pedido</span>` : ''}<button class="btn btn-p btn-add" data-add="${p.id}">${simples ? 'Adicionar' : 'Escolher'}</button>`;
+        return `<article class="item">
+          ${p.foto ? `<img class="thumb" src="${esc(p.foto)}" alt="" loading="lazy" onerror="this.remove()">` : ''}
+          <div class="item-c">
+            <div class="linha-preco"><h3>${esc(p.nome)}</h3><span class="pont"></span><b>${brl(p.preco)}</b></div>
+            <div class="item-base"><p>${esc(p.descricao || '')}${p.qtd_proteinas && acompDo(turno) ? `<br><span style="color:var(--tinta)">Acompanha: ${esc(acompDo(turno))}</span>` : ''}</p>${acao ? `<div class="item-acao">${acao}</div>` : ''}</div>
+          </div></article>`;
+      }).join('')}</section>`).join('')
+    : `<p class="vazio">Nenhum item neste turno ainda.</p>`;
+  observarCats();
+}
+
+let obs;
+function observarCats() {
+  if (obs) obs.disconnect();
+  if (!('IntersectionObserver' in window)) return;
+  obs = new IntersectionObserver(es => {
+    es.forEach(e => {
+      if (!e.isIntersecting) return;
+      $$('#cats a').forEach(a => a.classList.toggle('ativo', a.getAttribute('href') === '#' + e.target.id));
+      const at = $('#cats a.ativo'); if (at) at.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    });
+  }, { rootMargin: '-60px 0px -70% 0px' });
+  $$('.secao').forEach(s => obs.observe(s));
+}
+
+/* ================= CARRINHO ================= */
+function salvarCarrinho() { carrinho.ts = Date.now(); ls.set(K.car, carrinho); }
+const totalCarrinho = () => carrinho.linhas.reduce((s, l) => s + l.preco * l.qtd, 0);
+const nItens = () => carrinho.linhas.reduce((s, l) => s + l.qtd, 0);
+function atualizarBarra() {
+  const n = nItens();
+  $('#barra').hidden = !n;
+  $('#barraN').textContent = n;
+  $('#barraTotal').textContent = brl(totalCarrinho());
+  $('#barra').classList.toggle('com-pedido', !$('#barraPedido').hidden);
+}
+function garantirTurnoDoCarrinho() {
+  if (!carrinho.linhas.length) { carrinho.turno = turno; return true; }
+  if (carrinho.turno === turno) return true;
+  if (!confirm(`Seu pedido atual é do ${nomeTurno(cfg(), carrinho.turno).toLowerCase()}. Começar um pedido novo para o ${nomeTurno(cfg(), turno).toLowerCase()}?`)) return false;
+  carrinho = { turno, linhas: [] }; return true;
+}
+function addLinha(p, { qtd = 1, proteinas = [], sabor = '', obs = '' } = {}) {
+  if (!garantirTurnoDoCarrinho()) return false;
+  if (p.conta_limite && cfg().limite && cfg().limite.ativo) {
+    const r = restantes(turno);
+    if (r <= 0) { toast('Esgotou por hoje.'); return false; }
+    if (qtd > r) { toast(r === 1 ? 'Só resta 1 para hoje.' : `Só restam ${r} para hoje.`); return false; }
+  }
+  const chave = [p.id, proteinas.slice().sort().join(','), sabor, obs].join('|');
+  const ex = carrinho.linhas.find(l => l.k === chave);
+  if (ex) ex.qtd += qtd;
+  else carrinho.linhas.push({ k: chave, id: p.id, nome: p.nome, preco: Number(p.preco), qtd, proteinas,
+    protNomes: proteinas.map(id => (D.proteinas.find(x => x.id === id) || {}).nome || ''), sabor, obs, lim: !!p.conta_limite });
+  salvarCarrinho(); renderMenu(); atualizarBarra(); return true;
+}
+function mudarSimples(id, d) {
+  const l = carrinho.linhas.find(x => x.id === id);
+  if (d > 0) { const p = D.produtos.find(x => x.id === id); if (p) addLinha(p); return; }
+  if (!l) return;
+  l.qtd--; if (l.qtd <= 0) carrinho.linhas.splice(carrinho.linhas.indexOf(l), 1);
+  salvarCarrinho(); renderMenu(); atualizarBarra();
+}
+
+/* ---------- escolher opções ---------- */
+function abrirItem(p) {
+  if (!podePedir(turno)) return;
+  if (!p.qtd_proteinas && !(p.sabores && p.sabores.length)) { if (addLinha(p)) toast(p.nome + ' adicionado'); return; }
+  itemAberto = p; itemEsc = { prot: {}, sabor: '', qtd: 1 };
+  $('#itemNome').textContent = p.nome;
+  $('#itemDesc').textContent = [p.descricao, p.qtd_proteinas && acompDo(turno) ? 'Acompanha: ' + acompDo(turno) : '', brl(p.preco)].filter(Boolean).join('. ');
+  $('#blocoProt').hidden = !p.qtd_proteinas;
+  $('#protTitulo').textContent = p.qtd_proteinas === 1 ? 'Escolha a proteína' : `Escolha ${p.qtd_proteinas} proteínas`;
+  $('#blocoSabor').hidden = !(p.sabores && p.sabores.length);
+  $('#saborLista').innerHTML = (p.sabores || []).map(s => `<button class="opcao" data-sabor="${esc(s)}" aria-pressed="false">${esc(s)}</button>`).join('');
+  $('#itemObs').value = ''; $('#itemErro').textContent = '';
+  renderEscolhas(); abrir('#mItem');
+}
+function renderEscolhas() {
+  const p = itemAberto, n = p.qtd_proteinas, tot = Object.values(itemEsc.prot).reduce((a, b) => a + b, 0);
+  if (n) {
+    $('#protConta').textContent = `${tot} de ${n}`;
+    $('#protConta').classList.toggle('ok', tot === n);
+    $('#protLista').innerHTML = protsDoTurno(turno).map(x => {
+      const q = itemEsc.prot[x.id] || 0;
+      if (x.esgotado) return `<div class="escolha off"><span class="nome">${esc(x.nome)}</span><span class="sub">acabou</span></div>`;
+      if (n === 1) return `<button class="escolha ${q ? 'sel' : ''}" data-prot1="${x.id}"><span class="radio"></span><span class="nome">${esc(x.nome)}</span></button>`;
+      return `<div class="escolha ${q ? 'sel' : ''}"><span class="nome">${esc(x.nome)}</span>
+        <div class="qtd"><button data-protm="${x.id}" aria-label="Tirar ${esc(x.nome)}" ${q ? '' : 'disabled style="opacity:.3"'}>−</button><span>${q}</span><button data-protp="${x.id}" aria-label="Adicionar ${esc(x.nome)}" ${tot >= n ? 'disabled style="opacity:.3"' : ''}>+</button></div></div>`;
+    }).join('');
+  }
+  $('#itemQtd').textContent = itemEsc.qtd;
+  $('#btnAddItem').textContent = `Adicionar ${brl(p.preco * itemEsc.qtd)}`;
+}
+function confirmarItem() {
+  const p = itemAberto, n = p.qtd_proteinas;
+  const prots = []; Object.entries(itemEsc.prot).forEach(([id, q]) => { for (let i = 0; i < q; i++) prots.push(id); });
+  if (n && prots.length !== n) { $('#itemErro').textContent = n === 1 ? 'Escolha a proteína.' : `Escolha ${n} proteínas.`; return; }
+  if (p.sabores && p.sabores.length && !itemEsc.sabor) { $('#itemErro').textContent = 'Escolha o sabor.'; return; }
+  if (addLinha(p, { qtd: itemEsc.qtd, proteinas: prots, sabor: itemEsc.sabor, obs: $('#itemObs').value.trim() })) {
+    fechar($('#mItem')); toast(p.nome + ' adicionado');
+  }
+}
+
+/* ---------- finalizar ---------- */
+function abrirCarrinho() {
+  const c = cfg(), cli = ls.get(K.cli, {});
+  $('#carTurno').textContent = nomeTurno(c, carrinho.turno) + ' de hoje';
+  // tipos de entrega
+  const tipos = [['entrega', 'Entrega', c.entrega && c.entrega.ativo], ['retirada', 'Retirar no local', c.retirada !== false], ['local', 'Comer no local', c.local !== false]].filter(t => t[2]);
+  if (!tipos.find(t => t[0] === sel.tipo)) sel.tipo = tipos.length === 1 ? tipos[0][0] : (tipos.find(t => t[0] === cli.tipo) || [])[0] || '';
+  $('#tipos').innerHTML = tipos.map(t => `<button class="opcao" data-tipo="${t[0]}" aria-pressed="${sel.tipo === t[0]}">${t[1]}${t[0] === 'entrega' && Number(c.entrega.taxa) > 0 ? ' +' + brl(c.entrega.taxa).replace('R$ ', 'R$ ') : ''}</button>`).join('');
+  // pagamentos
+  const pg = c.pagamentos || {};
+  const pags = [['Pix', pg.pix !== false], ['Dinheiro', pg.dinheiro !== false], ['Cartão', pg.cartao !== false]].filter(x => x[1]).map(x => x[0]);
+  if (!pags.includes(sel.pag)) sel.pag = '';
+  $('#pags').innerHTML = pags.map(x => `<button class="opcao" data-pag="${x}" aria-pressed="${sel.pag === x}">${x}</button>`).join('');
+  // quando
+  const agora = podePedirAgora(carrinho.turno), agenda = podeAgendar(carrinho.turno);
+  $('#blocoQuando').hidden = !agenda;
+  if (!agora) sel.quando = 'agendar'; else if (!agenda || !sel.quando) sel.quando = 'agora';
+  $('#quando').innerHTML = (agora ? `<button class="opcao" data-quando="agora" aria-pressed="${sel.quando === 'agora'}">Agora</button>` : '') +
+    `<button class="opcao" data-quando="agendar" aria-pressed="${sel.quando === 'agendar'}">Agendar horário</button>`;
+  preencherHorarios();
+  $('#blocoCupom').hidden = !c.cupons;
+  if (!$('#cNome').value) $('#cNome').value = cli.nome || '';
+  if (!$('#cTel').value) $('#cTel').value = cli.telefone || '';
+  if (!$('#cEnd').value) $('#cEnd').value = cli.endereco || '';
+  if (!$('#cRef').value) $('#cRef').value = cli.ref || '';
+  if (!$('#cBairro').value) $('#cBairro').value = cli.bairro || '';
+  if (!$('#cComp').value) $('#cComp').value = cli.comp || '';
+  $('#carErro').textContent = '';
+  renderCarrinho(); checarFidelidade(); abrir('#mCarrinho');
+}
+function preencherHorarios() {
+  const t = carrinho.turno, c = cfg();
+  $('#boxHorario').hidden = sel.quando !== 'agendar';
+  if (sel.quando !== 'agendar') return;
+  const ini = Math.max(min(c.turnos[t].inicio), Math.ceil((B.minutosAgora() + 20) / 15) * 15), fim = min(c.turnos[t].fim);
+  const ops = []; for (let m = ini; m <= fim; m += 15) ops.push(hhmm(m));
+  const atual = $('#cHorario').value;
+  $('#cHorario').innerHTML = ops.length ? ops.map(h => `<option ${h === atual ? 'selected' : ''}>${h}</option>`).join('') : '<option value="">Sem horários hoje</option>';
+}
+function renderCarrinho() {
+  const c = cfg();
+  if (!carrinho.linhas.length) { fechar($('#mCarrinho')); return; }
+  $('#carLinhas').innerHTML = carrinho.linhas.map((l, i) => `
+    <div class="linha-car"><div class="c"><strong>${esc(l.nome)}</strong>
+      ${[l.protNomes.join(' + '), l.sabor, l.obs && ('Obs.: ' + l.obs)].filter(Boolean).map(t => `<small>${esc(t)}</small>`).join('')}</div>
+      <div class="qtd"><button data-lmenos="${i}" aria-label="Diminuir">−</button><span>${l.qtd}</span><button data-lmais="${i}" aria-label="Aumentar">+</button></div>
+      <span class="v">${brl(l.preco * l.qtd)}</span></div>`).join('') +
+    `<button class="btn btn-l" style="margin-top:12px" data-fechar>Adicionar mais itens</button>`;
+  $('#boxEndereco').hidden = sel.tipo !== 'entrega';
+  $('#boxTroco').hidden = sel.pag !== 'Dinheiro';
+  $('#pagDica').textContent = { Pix: 'A chave Pix aparece quando você finalizar.', Dinheiro: 'Pague na entrega ou retirada.', 'Cartão': 'Débito ou crédito na maquininha, na entrega ou retirada.' }[sel.pag] || '';
+  const { sub, taxa, dCupom, dFid, total } = contas();
+  $('#resumo').innerHTML = `<div><span>Subtotal</span><span>${brl(sub)}</span></div>` +
+    (sel.tipo === 'entrega' ? `<div><span>Entrega</span><span>${taxa ? brl(taxa) : 'Grátis'}</span></div>` : '') +
+    (dCupom ? `<div class="desc"><span>Cupom ${esc(cupom.codigo)}</span><span>− ${brl(dCupom)}</span></div>` : '') +
+    (dFid ? `<div class="desc"><span>Prêmio fidelidade</span><span>− ${brl(dFid)}</span></div>` : '') +
+    `<div class="total"><span>Total</span><span>${brl(total)}</span></div>`;
+  $('#btnFinalizar').textContent = `Finalizar pedido · ${brl(total)}`;
+}
+function contas() {
+  const c = cfg(), sub = totalCarrinho();
+  const taxa = sel.tipo === 'entrega' ? Number(c.entrega && c.entrega.taxa) || 0 : 0;
+  let dCupom = 0, dFid = 0;
+  if (cupom && c.cupons && sub >= cupom.minimo) dCupom = cupom.tipo === 'pct' ? Math.round(sub * cupom.valor) / 100 : Number(cupom.valor);
+  if (fid && fid.ativo && fid.feitos >= fid.a_cada) dFid = Number(fid.desconto) || 0;
+  const d = Math.min(sub, dCupom + dFid);
+  return { sub, taxa, dCupom: Math.min(dCupom, sub), dFid: Math.max(0, d - Math.min(dCupom, sub)), total: sub + taxa - d };
+}
+let fidTimer;
+function checarFidelidade() {
+  clearTimeout(fidTimer);
+  const nota = $('#fidNota');
+  if (!(cfg().fidelidade && cfg().fidelidade.ativo) || digitos($('#cTel').value).length < 10) { fid = null; nota.hidden = true; renderCarrinho(); return; }
+  fidTimer = setTimeout(async () => {
+    try {
+      fid = await rpc('fidelidade_status', { p_loja: L, p_telefone: digitos($('#cTel').value) });
+      if (!fid.ativo) { nota.hidden = true; return; }
+      nota.hidden = false;
+      const falta = fid.a_cada - fid.feitos;
+      nota.className = 'nota' + (falta <= 0 ? ' ok' : '');
+      nota.textContent = falta <= 0 ? `Você ganhou ${brl(fid.desconto)} de desconto neste pedido. Obrigado pela preferência!`
+        : `Programa de fidelidade: ${fid.feitos} de ${fid.a_cada} pedidos. Faltam ${falta} para ganhar ${brl(fid.desconto)} de desconto.`;
+      renderCarrinho();
+    } catch (e) {}
+  }, 500);
+}
+async function aplicarCupom() {
+  const cod = $('#cCupom').value.trim().toUpperCase();
+  const nota = $('#cupomNota');
+  if (!cod) { cupom = null; nota.hidden = true; renderCarrinho(); return; }
+  try {
+    const r = await rpc('checar_cupom', { p_loja: L, p_codigo: cod, p_subtotal: totalCarrinho() });
+    if (!r.ok) { cupom = null; nota.hidden = false; nota.className = 'nota'; nota.textContent = r.erro; }
+    else { cupom = r; nota.hidden = false; nota.className = 'nota ok'; nota.textContent = `Cupom aplicado: ${r.tipo === 'pct' ? r.valor + '% de desconto' : brl(r.valor) + ' de desconto'}.`; }
+  } catch (e) { nota.hidden = false; nota.className = 'nota'; nota.textContent = 'Não foi possível verificar o cupom.'; }
+  renderCarrinho();
+}
+async function finalizar() {
+  const erro = m => { $('#carErro').textContent = m; return false; };
+  $('#carErro').textContent = '';
+  const nome = $('#cNome').value.trim(), tel = digitos($('#cTel').value);
+  if (!sel.tipo) return erro('Escolha como quer receber.');
+  if (sel.tipo === 'entrega' && $('#cEnd').value.trim().length < 5) { $('#cEnd').focus(); return erro('Informe a rua e o número para a entrega.'); }
+  if (sel.tipo === 'entrega' && $('#cBairro').value.trim().length < 2) { $('#cBairro').focus(); return erro('Informe o bairro.'); }
+  if (sel.quando === 'agendar' && !$('#cHorario').value) return erro('Não há horários disponíveis para hoje.');
+  if (nome.length < 2) { $('#cNome').focus(); return erro('Informe seu nome.'); }
+  if (tel.length < 10) { $('#cTel').focus(); return erro('Informe seu WhatsApp com DDD.'); }
+  if (!sel.pag) return erro('Escolha a forma de pagamento.');
+  const { total } = contas();
+  const troco = sel.pag === 'Dinheiro' ? numBR($('#cTroco').value) : 0;
+  if (troco && troco < total) return erro('O troco precisa ser para um valor maior que o total.');
+  const endereco = sel.tipo === 'entrega' ? [$('#cEnd').value.trim(), $('#cComp').value.trim(), $('#cBairro').value.trim() && ('Bairro ' + $('#cBairro').value.trim()), $('#cRef').value.trim() && ('Ref.: ' + $('#cRef').value.trim())].filter(Boolean).join(' · ') : '';
+  const btn = $('#btnFinalizar'); btn.disabled = true; btn.textContent = 'Enviando…';
+  try {
+    const r = await rpc('criar_pedido', { p_loja: L, p: {
+      turno: carrinho.turno, agendado: sel.quando === 'agendar' ? $('#cHorario').value : '', cliente: nome, telefone: tel,
+      tipo: sel.tipo, endereco, pagamento: sel.pag, troco, cupom: cupom ? cupom.codigo : '', obs: $('#cObs').value.trim(),
+      itens: carrinho.linhas.map(l => ({ id: l.id, qtd: l.qtd, proteinas: l.proteinas, sabor: l.sabor, obs: l.obs }))
+    } });
+    if (!r.ok) throw new Error(r.erro);
+    ls.set(K.cli, { nome, telefone: tel, endereco: $('#cEnd').value.trim(), bairro: $('#cBairro').value.trim(), comp: $('#cComp').value.trim(), ref: $('#cRef').value.trim(), tipo: sel.tipo });
+    ls.set(K.ult, { linhas: carrinho.linhas, turno: carrinho.turno, ts: Date.now() });
+    ls.set(K.ped, { id: r.id, codigo: r.codigo, numero: r.numero, total: r.total, pagamento: sel.pag, tipo: sel.tipo, status: 'Novo', ts: Date.now() });
+    carrinho = { turno: null, linhas: [] }; salvarCarrinho();
+    cupom = null; $('#cCupom').value = ''; $('#cupomNota').hidden = true; $('#cObs').value = ''; $('#cTroco').value = '';
+    fechar($('#mCarrinho')); renderTudo(); mostrarBarraPedido(); abrirPedido(true); acompanhar();
+    carregar(true);
+  } catch (e) {
+    erro(e.message || 'Não foi possível enviar. Verifique sua internet e tente de novo.');
+    if (/esgot|dispon|acabou/i.test(e.message || '')) carregar(true);
+  } finally { btn.disabled = false; renderCarrinho(); }
+}
+
+/* ================= PEDIR DE NOVO ================= */
+function renderRepetir() {
+  const u = ls.get(K.ult), box = $('#repetir');
+  if (!cfg().pedir_de_novo || !u || !u.linhas || !u.linhas.length || nItens() || !podePedir(turno)) { box.hidden = true; return; }
+  box.hidden = false;
+  $('#repetirTxt').textContent = u.linhas.map(l => `${l.qtd} ${l.nome}`).join(', ');
+}
+function repetir() {
+  const u = ls.get(K.ult); if (!u) return;
+  let ok = 0, falta = [];
+  u.linhas.forEach(l => {
+    const p = D.produtos.find(x => x.id === l.id);
+    const protOk = (l.proteinas || []).every(id => protsDisp(turno).some(x => x.id === id));
+    if (!p || motivoIndisp(p) || !doTurno(p, turno) || !protOk) { falta.push(l.nome); return; }
+    if (addLinha(p, { qtd: l.qtd, proteinas: l.proteinas || [], sabor: l.sabor || '', obs: l.obs || '' })) ok++;
+  });
+  renderRepetir();
+  if (falta.length) toast(`Não deu para repetir: ${falta.join(', ')}. Escolha de novo, por favor.`);
+  if (ok) abrirCarrinho();
+}
+
+/* ================= ACOMPANHAR PEDIDO ================= */
+const NOMES = { Novo: 'Recebido', Preparando: 'Preparando', Pronto: 'Pronto', Saiu: 'Em rota de entrega', Entregue: 'Entregue', Cancelado: 'Cancelado' };
+const FINAIS = ['Entregue', 'Cancelado'];
+function meuPedido() { const p = ls.get(K.ped); return p && Date.now() - p.ts < 8 * 3600e3 ? p : null; }
+function etapasDo(p) { return p.tipo === 'entrega' ? ['Novo', 'Preparando', 'Pronto', 'Saiu', 'Entregue'] : ['Novo', 'Preparando', 'Pronto', 'Entregue']; }
+function msgDo(p) {
+  return ({ Novo: 'Recebemos seu pedido. Já já começa o preparo.', Preparando: 'Seu pedido está sendo preparado.',
+    Pronto: p.tipo === 'entrega' ? 'Seu pedido está pronto e logo sai para entrega.' : 'Seu pedido está pronto!',
+    Saiu: 'Seu pedido está em rota de entrega. Já já chega aí!', Entregue: 'Pedido entregue. Bom apetite!', Cancelado: 'Seu pedido foi cancelado. Fale com a loja.' })[p.status] || p.status;
+}
+function abrirPedido(novo) {
+  const p = meuPedido(); if (!p) return;
+  $('#pedTitulo').textContent = novo ? `Pedido #${p.numero} enviado` : `Pedido #${p.numero}`;
+  renderPedido(); abrir('#mPedido');
+}
+function renderPedido() {
+  const p = meuPedido(); if (!p) return;
+  const et = etapasDo(p), idx = et.indexOf(p.status);
+  $('#etapas').style.gridTemplateColumns = `repeat(${et.length},1fr)`;
+  $('#etapas').classList.toggle('cancel', p.status === 'Cancelado');
+  $('#etapas').innerHTML = et.map((s, i) => `<div class="etapa ${idx >= i ? 'feita' : ''} ${idx === i && !FINAIS.includes(s) ? 'atual' : ''}"><i></i>${s === 'Saiu' ? 'Em rota' : NOMES[s]}</div>`).join('');
+  $('#pedMsg').textContent = msgDo(p);
+  $('#pedMsg').classList.toggle('cancel', p.status === 'Cancelado');
+  const chave = (cfg().chave_pix || '').trim();
+  $('#pixBox').hidden = !(p.pagamento === 'Pix' && chave && !FINAIS.includes(p.status));
+  $('#pixChave').textContent = chave; $('#pixValor').textContent = brl(p.total);
+  const zap = digitos(cfg().whatsapp);
+  $('#btnZapLoja').hidden = zap.length < 10;
+  if (zap.length >= 10) $('#btnZapLoja').href = `https://wa.me/${zap.length <= 11 ? '55' + zap : zap}?text=${encodeURIComponent(`Olá! Sobre meu pedido #${p.numero}`)}`;
+}
+function mostrarBarraPedido() {
+  const p = meuPedido(), b = $('#barraPedido');
+  b.hidden = !p;
+  if (p) { $('#barraPedidoTxt').textContent = `Pedido #${p.numero}: ${NOMES[p.status] || p.status}`; b.classList.toggle('final', FINAIS.includes(p.status)); }
+  atualizarBarra();
+}
+let timerPed;
+async function acompanhar() {
+  clearTimeout(timerPed);
+  const p = meuPedido();
+  if (!p || FINAIS.includes(p.status)) return;
+  if (!document.hidden) {
+    try {
+      const r = await rpc('acompanhar', { p_id: p.id, p_codigo: p.codigo });
+      if (r.ok && r.status !== p.status) {
+        p.status = r.status; ls.set(K.ped, p);
+        mostrarBarraPedido(); renderPedido();
+        if (r.status === 'Pronto' || r.status === 'Saiu') {
+          B.bip(2); try { navigator.vibrate && navigator.vibrate([250, 120, 250]); } catch (e) {}
+          if ($('#mPedido').hidden && $$('.modal').every(m => m.hidden)) abrirPedido(false);
+        }
+        toast(`Pedido #${p.numero}: ${NOMES[r.status]}`);
+      } else if (!r.ok) { ls.del(K.ped); mostrarBarraPedido(); return; }
+    } catch (e) {}
+  }
+  timerPed = setTimeout(acompanhar, 6000);
+}
+
+/* ================= ARTE DO DIA ================= */
+function linkCardapio() { const c = cfg(); if (c.link) return c.link; return location.protocol === 'file:' ? '' : location.origin + location.pathname.replace(/index\.html$/, ''); }
+function dadosArte(t) {
+  const c = cfg();
+  return { formato: 'story', turno: nomeTurno(c, t), proteinas: protsDisp(t).map(p => p.nome), slogan: c.slogan,
+    precos: destaquesDo(t).slice(0, 3).map(p => ({ nome: p.nome, preco: p.preco })), acomp: acompDo(t), foto: 'img/arte-foto.jpg',
+    link: linkCardapio(), data: B.agoraLoja() };
+}
+let arteBlob = null;
+async function mostrarArte() {
+  const cv = document.createElement('canvas');
+  await B.desenharArte(cv, dadosArte(turno));
+  arteBlob = await B.canvasParaBlob(cv);
+  $('#arteImg').src = URL.createObjectURL(arteBlob);
+  $('#mArte').hidden = false; document.body.classList.add('travado');
+}
+function abrirArteSeHouver() {
+  if (!cfg().arte_abertura || !protsDisp(turno).length) return;
+  const chave = B.hojeISO() + '-' + turno, vistos = ls.get(K.arte, {});
+  if (vistos[chave] || meuPedido()) return;
+  vistos[chave] = 1; ls.set(K.arte, vistos);
+  mostrarArte();
+}
+
+/* ================= MODAIS ================= */
+function abrir(sel) { $(sel).hidden = false; document.body.classList.add('travado'); }
+function fechar(m) {
+  if (!m) return; m.hidden = true;
+  if ($$('.modal').every(x => x.hidden) && $('#mArte').hidden) document.body.classList.remove('travado');
+}
+
+/* ================= EVENTOS ================= */
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('modal')) return fechar(e.target);
+  const b = e.target.closest('button,a'); if (!b) return;
+  const d = b.dataset;
+  if (d.turno) { turno = d.turno; renderTudo(); window.scrollTo({ top: 0 }); }
+  else if (d.add) { const p = D.produtos.find(x => x.id === d.add); if (p) abrirItem(p); }
+  else if (d.mais) mudarSimples(d.mais, 1);
+  else if (d.menos) mudarSimples(d.menos, -1);
+  else if (d.prot1) { itemEsc.prot = { [d.prot1]: 1 }; renderEscolhas(); }
+  else if (d.protp) { itemEsc.prot[d.protp] = (itemEsc.prot[d.protp] || 0) + 1; renderEscolhas(); }
+  else if (d.protm) { itemEsc.prot[d.protm] = Math.max(0, (itemEsc.prot[d.protm] || 0) - 1); renderEscolhas(); }
+  else if (d.sabor !== undefined) { itemEsc.sabor = d.sabor; $$('#saborLista .opcao').forEach(x => x.setAttribute('aria-pressed', x.dataset.sabor === d.sabor)); }
+  else if (d.tipo) { sel.tipo = d.tipo; $$('#tipos .opcao').forEach(x => x.setAttribute('aria-pressed', x.dataset.tipo === d.tipo)); renderCarrinho(); }
+  else if (d.pag) { sel.pag = d.pag; $$('#pags .opcao').forEach(x => x.setAttribute('aria-pressed', x.dataset.pag === d.pag)); renderCarrinho(); }
+  else if (d.quando) { sel.quando = d.quando; $$('#quando .opcao').forEach(x => x.setAttribute('aria-pressed', x.dataset.quando === d.quando)); preencherHorarios(); }
+  else if (d.lmais !== undefined || d.lmenos !== undefined) {
+    const l = carrinho.linhas[+(d.lmais ?? d.lmenos)]; if (!l) return;
+    if (d.lmais !== undefined) {
+      if (l.lim && cfg().limite && cfg().limite.ativo && restantes(carrinho.turno) <= 0) return toast('Esgotou por hoje.');
+      l.qtd++;
+    } else { l.qtd--; if (l.qtd <= 0) carrinho.linhas.splice(carrinho.linhas.indexOf(l), 1); }
+    salvarCarrinho(); renderMenu(); atualizarBarra(); renderCarrinho();
+  }
+  else if (b.hasAttribute('data-fechar')) fechar(b.closest('.modal'));
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { const m = $$('.modal').reverse().find(x => !x.hidden); if (m) fechar(m); else if (!$('#mArte').hidden) $('#btnFecharArte').click(); } });
+$('#itemMenos').onclick = () => { itemEsc.qtd = Math.max(1, itemEsc.qtd - 1); renderEscolhas(); };
+$('#itemMais').onclick = () => { itemEsc.qtd = Math.min(20, itemEsc.qtd + 1); renderEscolhas(); };
+$('#btnAddItem').onclick = confirmarItem;
+$('#barra').onclick = () => { if (carrinho.turno && carrinho.turno !== turno) { turno = carrinho.turno; renderTudo(); } abrirCarrinho(); };
+$('#barraPedido').onclick = () => {
+  const p = meuPedido(); abrirPedido(false);
+  if (p && FINAIS.includes(p.status)) { ls.del(K.ped); mostrarBarraPedido(); }
+};
+$('#btnFinalizar').onclick = finalizar;
+$('#btnCupom').onclick = aplicarCupom;
+$('#cTel').addEventListener('input', e => { e.target.value = mascaraTel(e.target.value); checarFidelidade(); });
+$('#btnRepetir').onclick = repetir;
+$('#btnCopiarPix').onclick = async () => { await B.copiar($('#pixChave').textContent); toast('Chave Pix copiada'); };
+$('#btnVerArte').onclick = mostrarArte;
+$('#btnIrMenu').onclick = e => { e.preventDefault(); const el = $('#cats'); window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 4, behavior: 'smooth' }); };
+$('#btnFecharArte').onclick = () => { $('#mArte').hidden = true; if ($$('.modal').every(x => x.hidden)) document.body.classList.remove('travado'); };
+$('#btnShareArte').onclick = async () => {
+  if (!arteBlob) return;
+  const r = await B.compartilharImagem(arteBlob, 'cardapio-de-hoje.png', `${dadosArte(turno).turno} de hoje no ${D.nome}! Peça aqui: ${dadosArte(turno).link}`);
+  if (r === 'baixado') toast('Imagem salva');
+};
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  if (D && Date.now() - ultimaCarga > 30000) carregar(true);
+  acompanhar();
+});
+setInterval(() => { if (!document.hidden && D) carregar(true); }, 120000);
+setInterval(() => { if (D) renderQuadro(); }, 60000);
+
+if (!carrinho.linhas || (carrinho.linhas.length && !carrinho.turno) || Date.now() - (carrinho.ts || 0) > 10 * 3600e3) carrinho = { turno: null, linhas: [] };
+carregar();
+B.carregarFontes();
+setTimeout(() => B.checarAtualizacao(() => nItens() > 0 || $$('.modal').some(m => !m.hidden)), 2000);
+</script>
+</body>
+</html>
