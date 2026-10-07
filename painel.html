@@ -197,6 +197,13 @@ label.rot .campo{display:block;width:100%;margin-top:6px}
 .chk{display:flex;align-items:center;gap:8px;margin-top:12px;font-weight:600;font-size:14px}
 .chk input{width:18px;height:18px;accent-color:var(--carvao)}
 .foto-prev{margin-top:8px;display:flex;align-items:center;gap:12px}
+.fotos-grade{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+.fotos-grade .f{position:relative;width:84px;height:84px}
+.fotos-grade .f img{width:100%;height:100%;border-radius:12px;object-fit:cover;background:var(--fundo)}
+.fotos-grade .f .x{position:absolute;top:-7px;right:-7px;width:26px;height:26px;border-radius:50%;background:var(--carvao);color:#fff;font-size:16px;line-height:1;border:2px solid #fff}
+.fotos-grade .f .capa{position:absolute;left:4px;bottom:4px;background:var(--mostarda,#e8b23a);color:#2a1a12;font-size:10.5px;font-weight:800;padding:2px 6px;border-radius:999px}
+.fotos-grade .f .mv{position:absolute;left:4px;top:4px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.92);font-size:13px;border:0}
+.fotos-grade .add{width:84px;height:84px;border-radius:12px;border:2px dashed var(--linha);background:var(--papel);font-weight:700;font-size:12.5px;color:var(--cinza)}
 .foto-prev img{width:84px;height:84px;border-radius:12px;object-fit:cover;background:var(--fundo)}
 
 /* ---------- financeiro ---------- */
@@ -430,7 +437,7 @@ table.tab{width:100%;border-collapse:collapse;font-size:13.5px}
     <label class="rot">Descrição<input class="campo" id="pDesc" maxlength="300" placeholder="Ex.: 2 opções de proteína + acompanhamentos"></label>
     <div class="duas">
       <label class="rot">Preço (R$)<input class="campo" id="pPreco" inputmode="decimal" placeholder="0,00" required></label>
-      <label class="rot">Categoria<input class="campo" id="pCat" list="listaCats" required></label>
+      <label class="rot">Categoria<input class="campo" id="pCat" list="listaCats" required placeholder="Escolha ou digite uma nova"></label>
     </div>
     <datalist id="listaCats"></datalist>
     <div class="rot">Aparece em</div>
@@ -441,10 +448,10 @@ table.tab{width:100%;border-collapse:collapse;font-size:13.5px}
     </div>
     <label class="chk"><input type="checkbox" id="pLimite"> Conta no limite diário de marmitas</label>
     <label class="chk"><input type="checkbox" id="pDestaque"> Mostrar o preço na arte do dia</label>
-    <div class="rot">Foto</div>
-    <div class="foto-prev"><img id="pFotoPrev" alt="" hidden><div style="display:grid;gap:8px"><button type="button" class="btn btn-l btn-pq" id="btnFoto">Escolher foto</button><button type="button" class="btn btn-l btn-pq" id="btnSemFoto">Remover foto</button></div></div>
-    <input type="file" id="pArquivo" accept="image/*" hidden>
-    <label class="rot">Ou cole o link de uma foto do Google Drive<input class="campo" id="pFotoLink" placeholder="https://drive.google.com/file/d/…"></label>
+    <div class="rot">Fotos <small style="font-weight:500;color:var(--cinza)">(até 5 · a primeira é a capa)</small></div>
+    <div class="fotos-grade" id="pFotos"></div>
+    <input type="file" id="pArquivo" accept="image/*" multiple hidden>
+    <label class="rot">Ou cole o link de uma foto do Google Drive<div style="display:flex;gap:8px"><input class="campo" id="pFotoLink" placeholder="https://drive.google.com/file/d/…" style="flex:1"><button type="button" class="btn btn-l btn-pq" id="btnAddLink">Adicionar</button></div></label>
     <p class="login-erro" id="prodErro" style="color:var(--brasa)"></p>
     <div class="folha-rod"><button type="button" class="btn btn-perigo" id="btnExcluirProd">Excluir</button><button class="btn btn-p" id="btnSalvarProd">Salvar produto</button></div>
   </form>
@@ -801,10 +808,11 @@ async function flagProduto(id, campo, v) {
   const r = await chamar('admin_flag', { p_loja: L, p_tipo: 'produto', p_id: id, p_campo: campo, p_valor: v });
   if (!r) { p[campo] = antes; renderProdutos(); }
 }
-let editando = null, fotoNova = null;
+let editando = null, FOTOS = [];   // FOTOS: [{ url }] ou [{ blob, prev }]
 function abrirProduto(id) {
   const p = D.produtos.find(x => x.id === id) || { nome: '', descricao: '', preco: '', categoria: '', turnos: [], qtd_proteinas: 0, sabores: [], conta_limite: false, destaque: false, foto: '', ativo: true };
-  editando = p.id ? p : null; fotoNova = null;
+  editando = p.id ? p : null;
+  FOTOS = (p.fotos && p.fotos.length ? p.fotos : [p.foto]).filter(Boolean).map(url => ({ url }));
   $('#prodTitulo').textContent = p.id ? 'Editar produto' : 'Novo produto';
   $('#pNome').value = p.nome; $('#pDesc').value = p.descricao || '';
   $('#pPreco').value = p.preco === '' ? '' : Number(p.preco).toFixed(2).replace('.', ',');
@@ -813,21 +821,36 @@ function abrirProduto(id) {
   $('#pAlmoco').checked = ambos || p.turnos.includes('almoco'); $('#pNoite').checked = ambos || p.turnos.includes('noite');
   $('#pProt').value = String(p.qtd_proteinas || 0); $('#pSabores').value = (p.sabores || []).join(', ');
   $('#pLimite').checked = !!p.conta_limite; $('#pDestaque').checked = !!p.destaque;
-  mostrarFoto(p.foto); $('#prodErro').textContent = '';
+  $('#pFotoLink').value = ''; renderFotos(); $('#prodErro').textContent = '';
   $('#btnExcluirProd').hidden = !p.id;
   $('#listaCats').innerHTML = ordemCats().map(c => `<option value="${esc(c)}">`).join('');
   $('#mProd').hidden = false; setTimeout(() => $('#pNome').focus(), 50);
 }
-function mostrarFoto(url) { if ($('#pFotoLink')) $('#pFotoLink').value = ''; $('#pFotoPrev').hidden = !url; $('#pFotoPrev').src = url || ''; $('#pFotoPrev').dataset.url = url || ''; }
+function renderFotos() {
+  $('#pFotos').innerHTML = FOTOS.map((f, i) => `<div class="f"><img src="${esc(f.prev || f.url)}" alt="Foto ${i + 1}">${i ? `<button type="button" class="mv" data-fcapa="${i}" title="Usar como capa" aria-label="Usar como capa">★</button>` : '<span class="capa">Capa</span>'}<button type="button" class="x" data-fdel="${i}" aria-label="Tirar foto">×</button></div>`).join('')
+    + (FOTOS.length < 5 ? '<button type="button" class="add" id="btnFoto">+ Foto</button>' : '');
+}
 $('#btnNovoProd').onclick = () => abrirProduto(null);
 $('#buscaProd').oninput = renderProdutos;
-$('#btnFoto').onclick = () => $('#pArquivo').click();
-$('#btnSemFoto').onclick = () => { fotoNova = null; mostrarFoto(''); };
-$('#pFotoLink').oninput = e => { const u = B.linkDrive(e.target.value); fotoNova = null; $('#pFotoPrev').hidden = !u; $('#pFotoPrev').src = u; };
+$('#pFotos').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.id === 'btnFoto') $('#pArquivo').click();
+  else if (b.dataset.fdel !== undefined) { FOTOS.splice(+b.dataset.fdel, 1); renderFotos(); }
+  else if (b.dataset.fcapa !== undefined) { const [f] = FOTOS.splice(+b.dataset.fcapa, 1); FOTOS.unshift(f); renderFotos(); }
+};
+$('#btnAddLink').onclick = () => {
+  const u = B.linkDrive($('#pFotoLink').value.trim()); if (!u) return;
+  if (FOTOS.length >= 5) return toast('No máximo 5 fotos.', 'erro');
+  FOTOS.push({ url: u }); $('#pFotoLink').value = ''; renderFotos();
+};
 $('#pArquivo').onchange = async e => {
-  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  try { fotoNova = await B.reduzirImagem(f, 900); $('#pFotoPrev').hidden = false; $('#pFotoPrev').src = URL.createObjectURL(fotoNova); }
-  catch (err) { $('#prodErro').textContent = err.message; }
+  const fs = [...e.target.files]; e.target.value = '';
+  for (const f of fs) {
+    if (FOTOS.length >= 5) { toast('No máximo 5 fotos.', 'erro'); break; }
+    try { const blob = await B.reduzirImagem(f, 900); FOTOS.push({ blob, prev: URL.createObjectURL(blob) }); }
+    catch (err) { $('#prodErro').textContent = err.message; }
+  }
+  renderFotos();
 };
 $('#formProd').onsubmit = async e => {
   e.preventDefault();
@@ -837,13 +860,14 @@ $('#formProd').onsubmit = async e => {
   if (!$('#pPreco').value.trim() || preco < 0) { $('#prodErro').textContent = 'Informe o preço.'; return; }
   const btn = $('#btnSalvarProd'); btn.disabled = true; btn.textContent = 'Salvando…';
   try {
-    let foto = $('#pFotoPrev').dataset.url || '';
-    if (fotoNova) { btn.textContent = 'Enviando foto ao Drive…'; foto = await B.enviarFoto(sess.pin, fotoNova); }
-    else if ($('#pFotoLink').value.trim()) foto = B.linkDrive($('#pFotoLink').value);
+    if ($('#pFotoLink').value.trim() && FOTOS.length < 5) { const u = B.linkDrive($('#pFotoLink').value.trim()); if (u) FOTOS.push({ url: u }); $('#pFotoLink').value = ''; }
+    const novas = FOTOS.filter(f => f.blob).length; let n = 0;
+    for (const f of FOTOS) if (f.blob) { n++; btn.textContent = novas > 1 ? `Enviando foto ${n} de ${novas}…` : 'Enviando foto ao Drive…'; f.url = await B.enviarFoto(sess.pin, f.blob); delete f.blob; }
+    const fotos = FOTOS.map(f => f.url).filter(Boolean), foto = fotos[0] || '';
     const p = { id: editando ? editando.id : '', nome: $('#pNome').value.trim(), descricao: $('#pDesc').value.trim(), preco,
       categoria: $('#pCat').value.trim(), turnos: al && no ? [] : [al ? 'almoco' : 'noite'], qtd_proteinas: +$('#pProt').value,
       sabores: $('#pSabores').value.split(',').map(s => s.trim()).filter(Boolean), conta_limite: $('#pLimite').checked,
-      destaque: $('#pDestaque').checked, foto, ativo: editando ? editando.ativo : true, esgotado: editando ? editando.esgotado : false,
+      destaque: $('#pDestaque').checked, foto, fotos, ativo: editando ? editando.ativo : true, esgotado: editando ? editando.esgotado : false,
       ordem: editando ? editando.ordem : D.produtos.length + 1 };
     const r = await chamar('admin_produto', { p_loja: L, p }, 'Produto salvo');
     if (!r) return;
@@ -1050,6 +1074,7 @@ function renderAjustes() {
       <label class="rot">Link do cardápio <small style="color:var(--cinza);font-weight:500">(o endereço do site, vai na arte e na mensagem)</small><input class="campo" data-aj="link" value="${esc(c.link || '')}" maxlength="200" placeholder="https://..."></label>
       <label class="rot">Chave Pix<input class="campo" data-aj="chave_pix" value="${esc(c.chave_pix || '')}" maxlength="80" placeholder="CPF, CNPJ, telefone, e-mail ou chave aleatória"></label>
       <label class="rot">Ordem das categorias no cardápio<input class="campo" data-aj="categorias" value="${esc((c.categorias || []).join(', '))}"></label>
+      <p style="font-size:12.5px;color:var(--cinza);margin-top:4px">Para criar uma categoria nova, digite o nome dela no campo "Categoria" ao cadastrar ou editar um produto. Aqui você só escolhe a ordem.</p>
     </div>
     <div class="cartao"><h2>Funcionamento</h2>
       ${op('Receber pedidos pelo cardápio', 'Desligado, o cliente só vê o cardápio', sw('pedidos_ativos', c.pedidos_ativos !== false))}

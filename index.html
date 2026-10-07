@@ -88,6 +88,25 @@ main{max-width:660px;margin:0 auto;padding:0 16px 120px}
 .item{display:flex;gap:14px;padding:16px 0;border-bottom:1px dashed var(--linha)}
 .item:last-child{border-bottom:0}
 .thumb{width:68px;height:68px;border-radius:12px;flex:none;object-fit:cover;background:#111}
+.thumb-b{position:relative;flex:none;padding:0;border:0;background:none;border-radius:12px;cursor:zoom-in;line-height:0}
+.thumb-b .nfotos{position:absolute;right:4px;bottom:4px;background:rgba(0,0,0,.62);color:#fff;font:700 11px/1 Montserrat,sans-serif;padding:3px 6px;border-radius:999px}
+.visor{position:fixed;inset:0;z-index:80;background:rgba(18,10,6,.94);display:flex;flex-direction:column}
+.visor[hidden]{display:none}
+.visor-topo{display:flex;align-items:center;gap:12px;padding:14px 16px;color:#fff}
+.visor-topo div{flex:1;min-width:0}
+.visor-topo strong{display:block;font:600 18px Oswald,sans-serif;letter-spacing:.2px}
+.visor-topo small{color:var(--mostarda);font-weight:700}
+.visor-topo button{width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;font-size:24px;border:0}
+.visor-trilho{flex:1;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+.visor-trilho::-webkit-scrollbar{display:none}
+.visor-trilho figure{flex:0 0 100%;scroll-snap-align:center;display:grid;place-items:center;margin:0;padding:0 12px}
+.visor-trilho img{max-width:100%;max-height:calc(100vh - 150px);border-radius:14px;object-fit:contain}
+.visor-pontos{display:flex;justify-content:center;gap:7px;padding:14px 0 calc(18px + env(safe-area-inset-bottom))}
+.visor-pontos i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.35)}
+.visor-pontos i.on{background:var(--mostarda);width:22px;border-radius:999px}
+.visor-seta{position:absolute;top:50%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:26px;display:none}
+@media(hover:hover) and (min-width:700px){.visor-seta{display:block}}
+.visor-seta.esq{left:18px}.visor-seta.dir{right:18px}
 .item-c{flex:1;min-width:0}
 .linha-preco{display:flex;align-items:baseline;gap:8px}
 .linha-preco h3{font:600 18px/1.25 Oswald,sans-serif;letter-spacing:.2px}
@@ -319,6 +338,12 @@ label.campo{display:block;margin-top:12px;font-size:13px;font-weight:600;color:v
 </div>
 
 <!-- arte do dia -->
+<div class="visor" id="mFoto" hidden role="dialog" aria-modal="true" aria-label="Fotos do produto">
+  <div class="visor-topo"><div><strong id="fotoNome"></strong><small id="fotoPreco"></small></div><button id="btnFecharFoto" aria-label="Fechar">×</button></div>
+  <div class="visor-trilho" id="fotoTrilho"></div>
+  <div class="visor-pontos" id="fotoPontos"></div>
+  <button class="visor-seta esq" id="fotoAnt" aria-label="Foto anterior">‹</button><button class="visor-seta dir" id="fotoProx" aria-label="Próxima foto">›</button>
+</div>
 <div class="arte-modal" id="mArte" hidden role="dialog" aria-modal="true" aria-label="Cardápio de hoje">
   <img id="arteImg" alt="Arte com o cardápio de hoje">
   <div class="arte-acoes">
@@ -491,7 +516,7 @@ function renderMenu() {
           ? `<div class="qtd"><button data-menos="${p.id}" aria-label="Tirar um">−</button><span>${q}</span><button data-mais="${p.id}" aria-label="Adicionar mais um">+</button></div>`
           : `${q ? `<span class="sub">${q} no pedido</span>` : ''}<button class="btn btn-p btn-add" data-add="${p.id}">${simples ? 'Adicionar' : 'Escolher'}</button>`;
         return `<article class="item">
-          ${p.foto ? `<img class="thumb" src="${esc(p.foto)}" alt="" loading="lazy" onerror="this.remove()">` : ''}
+          ${p.foto ? `<button class="thumb-b" data-fotos="${p.id}" aria-label="Ver foto de ${esc(p.nome)}"><img class="thumb" src="${esc(p.foto)}" alt="" loading="lazy" onerror="this.parentNode.remove()">${(p.fotos || []).length > 1 ? `<span class="nfotos">${p.fotos.length} fotos</span>` : ''}</button>` : ''}
           <div class="item-c">
             <div class="linha-preco"><h3>${esc(p.nome)}</h3><span class="pont"></span><b>${brl(p.preco)}</b></div>
             <div class="item-base"><p>${esc(p.descricao || '')}${p.qtd_proteinas && acompDo(turno) ? `<br><span style="color:var(--tinta)">Acompanha: ${esc(acompDo(turno))}</span>` : ''}</p>${acao ? `<div class="item-acao">${acao}</div>` : ''}</div>
@@ -854,6 +879,7 @@ document.addEventListener('click', e => {
   const b = e.target.closest('button,a'); if (!b) return;
   const d = b.dataset;
   if (d.turno) { turno = d.turno; turnoManual = Date.now(); renderTudo(); window.scrollTo({ top: 0 }); }
+  else if (d.fotos) { const p = D.produtos.find(x => x.id === d.fotos); if (p) abrirFotos(p); }
   else if (d.add) { const p = D.produtos.find(x => x.id === d.add); if (p) abrirItem(p); }
   else if (d.mais) mudarSimples(d.mais, 1);
   else if (d.menos) mudarSimples(d.menos, -1);
@@ -886,6 +912,30 @@ $('#barraPedido').onclick = () => {
 };
 $('#btnFinalizar').onclick = finalizar;
 $('#cBairroSel').onchange = renderCarrinho;
+
+/* ---------- ver fotos do produto ---------- */
+function abrirFotos(p) {
+  const fs = (p.fotos && p.fotos.length ? p.fotos : [p.foto]).filter(Boolean);
+  if (!fs.length) return;
+  $('#fotoNome').textContent = p.nome; $('#fotoPreco').textContent = brl(p.preco);
+  $('#fotoTrilho').innerHTML = fs.map((u, i) => `<figure><img src="${esc(u)}" alt="${esc(p.nome)}, foto ${i + 1}" ${i ? 'loading="lazy"' : ''}></figure>`).join('');
+  $('#fotoPontos').innerHTML = fs.length > 1 ? fs.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('') : '';
+  $('#fotoAnt').hidden = $('#fotoProx').hidden = fs.length < 2;
+  $('#fotoTrilho').scrollLeft = 0;
+  $('#mFoto').hidden = false; document.body.classList.add('travado');
+}
+function fecharFotos() { $('#mFoto').hidden = true; if ($$('.modal').every(x => x.hidden) && $('#mArte').hidden) document.body.classList.remove('travado'); }
+const fotoAtual = () => Math.round($('#fotoTrilho').scrollLeft / Math.max(1, $('#fotoTrilho').clientWidth));
+function irFoto(i) { const t = $('#fotoTrilho'); t.scrollTo({ left: Math.max(0, Math.min(i, t.children.length - 1)) * t.clientWidth, behavior: 'smooth' }); }
+$('#fotoTrilho').addEventListener('scroll', () => { const i = fotoAtual(); $$('#fotoPontos i').forEach((x, k) => x.classList.toggle('on', k === i)); }, { passive: true });
+$('#fotoTrilho').addEventListener('click', e => { if (e.target === e.currentTarget || e.target.tagName === 'FIGURE') fecharFotos(); });
+$('#btnFecharFoto').onclick = fecharFotos;
+$('#fotoAnt').onclick = () => irFoto(fotoAtual() - 1);
+$('#fotoProx').onclick = () => irFoto(fotoAtual() + 1);
+document.addEventListener('keydown', e => {
+  if ($('#mFoto').hidden) return;
+  if (e.key === 'Escape') fecharFotos(); else if (e.key === 'ArrowRight') irFoto(fotoAtual() + 1); else if (e.key === 'ArrowLeft') irFoto(fotoAtual() - 1);
+});
 $('#btnCupom').onclick = aplicarCupom;
 $('#cTel').addEventListener('input', e => { e.target.value = mascaraTel(e.target.value); checarFidelidade(); });
 $('#btnRepetir').onclick = repetir;

@@ -466,7 +466,8 @@ function salvarProduto_(p) {
     preco: Math.max(num_(p.preco), 0), categoria: seguro_(String(p.categoria || '').trim() || 'Outros'),
     turnos: lista_(p.turnos).filter(function (t) { return t === 'almoco' || t === 'noite'; }).join(','),
     qtd_proteinas: Math.min(Math.max(parseInt(p.qtd_proteinas, 10) || 0, 0), 5), sabores: lista_(p.sabores).map(seguro_).join(', '),
-    conta_limite: sim_(p.conta_limite, false), foto: String(p.foto || ''), ativo: sim_(p.ativo, true), esgotado: sim_(p.esgotado, false),
+    conta_limite: sim_(p.conta_limite, false), foto: (Array.isArray(p.fotos) ? p.fotos : [p.foto]).map(function (u) { return String(u || '').replace(/\|/g, '').trim(); }).filter(Boolean).slice(0, 5).join('|'),
+    ativo: sim_(p.ativo, true), esgotado: sim_(p.esgotado, false),
     destaque: sim_(p.destaque, false), ordem: parseInt(p.ordem, 10) || 0
   };
   if (ex) atualizarLinha_('Produtos', ex._row, o);
@@ -694,7 +695,7 @@ function atualizarLinha_(nome, row, campos) {
 function prod_(o) {
   return { id: String(o.id), nome: String(o.nome), descricao: String(o.descricao || ''), preco: num_(o.preco),
     categoria: String(o.categoria || 'Outros'), turnos: lista_(o.turnos), qtd_proteinas: parseInt(o.qtd_proteinas, 10) || 0,
-    sabores: lista_(o.sabores), conta_limite: sim_(o.conta_limite, false), foto: String(o.foto || ''), ativo: sim_(o.ativo, true),
+    sabores: lista_(o.sabores), conta_limite: sim_(o.conta_limite, false), foto: String(o.foto || '').split('|')[0], fotos: String(o.foto || '').split('|').filter(Boolean), ativo: sim_(o.ativo, true),
     esgotado: sim_(o.esgotado, false), destaque: sim_(o.destaque, false), ordem: parseInt(o.ordem, 10) || 0 };
 }
 function prot_(o) {
