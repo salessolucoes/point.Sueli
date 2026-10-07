@@ -208,7 +208,12 @@ function executar_(b) {
     const acao = String(b.acao || '');
     if (PUBLICAS[acao]) return PUBLICAS[acao](b);
     if (ADMIN[acao]) {
-      if (String(b.pin || '') !== String(props_().getProperty('pin') || PIN_INICIAL)) return { ok: false, erro: 'PIN inválido' };
+      const cc = CacheService.getScriptCache(), falhas = parseInt(cc.get('pin_falhas') || '0', 10);
+      if (falhas >= 10) return { ok: false, erro: 'Muitas tentativas erradas. Aguarde 10 minutos.' };
+      if (String(b.pin || '') !== String(props_().getProperty('pin') || PIN_INICIAL)) {
+        cc.put('pin_falhas', String(falhas + 1), 600);   // trava por 10 min depois de 10 erros
+        return { ok: false, erro: 'PIN inválido' };
+      }
       return ADMIN[acao](b);
     }
     return { ok: false, erro: 'Ação desconhecida' };

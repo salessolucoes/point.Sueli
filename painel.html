@@ -288,11 +288,14 @@ table.tab{width:100%;border-collapse:collapse;font-size:13.5px}
   <form class="login-box" id="formLogin">
     <img src="img/logo.png" alt="Point da Sueli">
     <h1>Painel da loja</h1>
+    <p id="loginAbrindo" hidden style="font-weight:700">Abrindo o painel…</p>
+    <div id="loginCampos">
     <p>Digite sua senha para entrar</p>
     <label class="sr" for="senha">Senha</label>
     <input class="senha" id="senha" type="password" inputmode="numeric" autocomplete="current-password" maxlength="20" required>
     <p class="login-erro" id="loginErro"></p>
     <button class="btn btn-p" style="width:100%;padding:15px;font-size:16px" id="btnEntrar">Entrar</button>
+    </div>
   </form>
 </section>
 
@@ -497,7 +500,13 @@ table.tab{width:100%;border-collapse:collapse;font-size:13.5px}
 const { $, $$, brl, esc, norm, digitos, numBR, ls, rpc, min, TURNOS, nomeTurno, turnoAtivo, toast } = B;
 const L = APP.LOJA;
 const KS = 'sessao_' + L;
-let sess = ls.get(KS);
+// A sessão vale só enquanto esta aba estiver aberta (sobrevive a recarregar a página).
+// Fechou a aba ou o navegador, pede a senha de novo.
+const SS = { get() { try { return JSON.parse(sessionStorage.getItem(KS)); } catch (e) { return null; } },
+             set(v) { try { sessionStorage.setItem(KS, JSON.stringify(v)); } catch (e) {} },
+             del() { try { sessionStorage.removeItem(KS); } catch (e) {} } };
+ls.del(KS);   // apaga a sessão antiga que ficava salva no aparelho
+let sess = SS.get();
 let D = null;                  // dados da loja
 let PED = new Map();           // pedidos do dia mostrado
 let diaVisto = null;
@@ -522,8 +531,9 @@ async function chamar(fn, args, okMsg) {
   } catch (e) { if (e.message !== 'sem sessão') toast('Sem conexão. Tente de novo.', 'erro'); return null; }
 }
 function sairPainel(msg) {
-  sess = null; ls.del(KS); clearTimeout(timerSync);
+  sess = null; SS.del(); clearTimeout(timerSync);
   $('#app').hidden = true; $('#login').hidden = false;
+  $('#loginCampos').hidden = false; $('#loginAbrindo').hidden = true;
   $('#loginErro').textContent = msg || ''; $('#senha').value = ''; setTimeout(() => $('#senha').focus(), 50);
 }
 $('#formLogin').addEventListener('submit', async e => {
@@ -533,8 +543,8 @@ $('#formLogin').addEventListener('submit', async e => {
   $('#btnEntrar').disabled = true; $('#btnEntrar').textContent = 'Entrando…'; $('#loginErro').textContent = '';
   try {
     const r = await rpc('admin_login', { pin: senha });
-    if (!r.ok) { $('#loginErro').textContent = 'Senha incorreta.'; return; }
-    sess = { pin: senha }; ls.set(KS, sess);
+    if (!r.ok) { $('#loginErro').textContent = /tentativas/.test(r.erro || '') ? r.erro : 'Senha incorreta.'; return; }
+    sess = { pin: senha }; SS.set(sess);
     await iniciar();
   } catch (err) { $('#loginErro').textContent = 'Não foi possível entrar. Verifique a internet.'; }
   finally { $('#btnEntrar').disabled = false; $('#btnEntrar').textContent = 'Entrar'; }
@@ -1180,7 +1190,7 @@ async function trocarSenha(e) {
   if (a.length < 6) return toast('A senha precisa ter pelo menos 6 dígitos', 'erro');
   if (a !== b) return toast('As senhas não são iguais', 'erro');
   const r = await chamar('admin_senha', { nova: a });
-  if (r) { sess.pin = a; ls.set(KS, sess); toast('Senha trocada'); $('#sNova').value = ''; $('#sRep').value = ''; }
+  if (r) { sess.pin = a; SS.set(sess); toast('Senha trocada'); $('#sNova').value = ''; $('#sRep').value = ''; }
 }
 
 /* ================= CLIQUES ================= */
@@ -1353,7 +1363,11 @@ $('#mManual').addEventListener('click', async e => {
 });
 
 /* ================= ABRIR ================= */
-if (sess) iniciar().catch(() => sairPainel());
+// já entrou antes neste aparelho: abre direto, sem mostrar o campo de senha enquanto carrega
+if (sess) {
+  $('#loginCampos').hidden = true; $('#loginAbrindo').hidden = false;
+  iniciar().catch(() => sairPainel()).finally(() => { $('#loginCampos').hidden = false; $('#loginAbrindo').hidden = true; });
+}
 else setTimeout(() => $('#senha').focus(), 50);
 B.carregarFontes();
 setTimeout(() => B.checarAtualizacao(() => ajMudou() || !$('#mProd').hidden), 3000);
