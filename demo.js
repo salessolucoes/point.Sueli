@@ -77,7 +77,8 @@ const CONFIG_PADRAO = {
     almoco: { nome: 'Almoço', ativo: true, inicio: '10:00', fim: '14:00' },
     noite:  { nome: 'Noite',  ativo: true, inicio: '17:00', fim: '22:00' }
   },
-  entrega: { ativo: true, taxa: 0 }, retirada: true, local: true,
+  entrega: { ativo: true, taxa: 0, bairros: [] }, retirada: true, local: true,
+  escolher_acomp: true,
   pagamentos: { pix: true, dinheiro: true, cartao: true },
   chave_pix: '', whatsapp: '85988397226',
   endereco: 'R. Antero de Quental, 301 – São Bento, Fortaleza',
@@ -180,7 +181,7 @@ const PUBLICAS = {
   acompanhar: function (b) { return acompanhar_(b.p_id, b.p_codigo); },
   checar_cupom: function (b) { return checarCupom_(b.p_codigo, b.p_subtotal); },
   fidelidade_status: function (b) { return fidelidadeStatus_(b.p_telefone); },
-  criar_pedido: function (b) { return comTrava_(function () { return criarPedido_(b.p || {}); }); }
+  criar_pedido: function (b) { return comTrava_(function () { return criarPedido_(b.p || {}, false); }); }
 };
 const ADMIN = {
   admin_login: function () { return { ok: true }; },
@@ -198,7 +199,8 @@ const ADMIN = {
   admin_config: function (b) { return comTrava_(function () { return salvarConfig_(b.p, b.p_nome); }); },
   admin_relatorio: function (b) { return relatorio_(String(b.p_ini), String(b.p_fim)); },
   admin_foto: function (b) { return { ok: true, url: enviarFoto_(b) }; },
-  admin_senha: function (b) { return trocarSenha_(b.nova); }
+  admin_senha: function (b) { return trocarSenha_(b.nova); },
+  admin_pedido_manual: function (b) { return comTrava_(function () { return criarPedido_(b.p || {}, true); }); }
 };
 
 function executar_(b) {
@@ -244,14 +246,26 @@ function cardapio_() {
 /* =====================================================================
    PEDIDO NOVO
    ===================================================================== */
-function criarPedido_(p) {
+function listaAcomp_(txt) {
+  return String(txt || '').split(/,|;|\s+e\s+/i).map(function (s) { return s.trim(); }).filter(Boolean);
+}
+function taxaBairro_(cfg, bairro) {
+  const bs = (cfg.entrega && Array.isArray(cfg.entrega.bairros)) ? cfg.entrega.bairros : [];
+  if (!bs.length) return { ok: true, taxa: num_(cfg.entrega && cfg.entrega.taxa) };
+  const b = norm_(bairro);
+  const x = bs.filter(function (y) { return norm_(y.nome) === b; })[0];
+  return x ? { ok: true, taxa: num_(x.taxa), nome: x.nome } : { ok: false };
+}
+function norm_(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
+
+function criarPedido_(p, manual) {
   const cfg = config_();
   const erro = function (m) { return { ok: false, erro: m }; };
-  if (!sim_(cfg.pedidos_ativos, true)) return erro('Pedidos online desativados no momento.');
-  const h = hoje_(cfg), modo = cfg.modo || 'auto';
+  if (!manual && !sim_(cfg.pedidos_ativos, true)) return erro('Pedidos online desativados no momento.');
+  const h = hoje_(cfg), modo = manual ? 'aberta' : (cfg.modo || 'auto');
   if (modo === 'fechada') return erro('Estamos fechados no momento.');
   const turno = String(p.turno || '');
-  if (['almoco', 'noite'].indexOf(turno) < 0 || !turnoAtivo_(cfg, turno)) return erro('Turno indisponível.');
+  if (['almoco', 'noite'].indexOf(turno) < 0 || (!manual && !turnoAtivo_(cfg, turno))) return erro('Turno indisponível.');
   const ini = min_(cfg.turnos[turno].inicio), fim = min_(cfg.turnos[turno].fim), agoraMin = min_(h.hm);
   const atual = turnoEm_(cfg, h.hm);
   const agendado = String(p.agendado || '').trim();
@@ -265,21 +279,23 @@ function criarPedido_(p) {
     return erro(atual ? 'Esse cardápio não está disponível agora.' : 'Estamos fechados agora.');
   }
 
-  const nome = String(p.cliente || '').trim().slice(0, 60);
+  const nome = String(p.cliente || '').trim().slice(0, 60) || (manual ? 'Balcão' : '');
   const tel = String(p.telefone || '').replace(/\D/g, '');
   if (nome.length < 2) return erro('Informe seu nome.');
-  if (tel.length < 10 || tel.length > 13) return erro('Informe seu telefone com DDD.');
+  if (manual ? (tel && (tel.length < 10 || tel.length > 13)) : (tel.length < 10 || tel.length > 13)) return erro('Informe o telefone com DDD.');
 
   const tipo = String(p.tipo || '');
   let endereco = String(p.endereco || '').trim().slice(0, 250), taxa = 0;
   if (tipo === 'entrega') {
-    if (!sim_(cfg.entrega && cfg.entrega.ativo, false)) return erro('Entrega indisponível no momento.');
+    if (!manual && !sim_(cfg.entrega && cfg.entrega.ativo, false)) return erro('Entrega indisponível no momento.');
     if (endereco.length < 5) return erro('Informe o endereço de entrega.');
-    taxa = num_(cfg.entrega.taxa);
+    const tb = taxaBairro_(cfg, p.bairro);
+    if (!tb.ok) return erro('Escolha o bairro da entrega.');
+    taxa = manual && p.taxa !== undefined && p.taxa !== '' ? Math.max(0, num_(p.taxa)) : tb.taxa;
   } else if (tipo === 'retirada') {
-    if (!sim_(cfg.retirada, true)) return erro('Retirada indisponível.'); endereco = '';
+    if (!manual && !sim_(cfg.retirada, true)) return erro('Retirada indisponível.'); endereco = '';
   } else if (tipo === 'local') {
-    if (!sim_(cfg.local, true)) return erro('Consumo no local indisponível.'); endereco = '';
+    if (!manual && !sim_(cfg.local, true)) return erro('Consumo no local indisponível.'); endereco = '';
   } else return erro('Escolha como quer receber o pedido.');
 
   if (!Array.isArray(p.itens) || !p.itens.length) return erro('Seu carrinho está vazio.');
@@ -293,6 +309,7 @@ function criarPedido_(p) {
     if (!pr || !pr.ativo) return erro('Um item do carrinho não está mais disponível. Atualize a página.');
     if (pr.esgotado) return erro(pr.nome + ' esgotou.');
     if (pr.turnos.length && pr.turnos.indexOf(turno) < 0) return erro(pr.nome + ' não está disponível neste turno.');
+    const acompLista = listaAcomp_((cfg.acompanhamentos || {})[turno]);
     const qtd = Math.min(parseInt(it.qtd, 10) || 0, 50);
     if (qtd <= 0) continue;
     let det = '';
@@ -304,6 +321,12 @@ function criarPedido_(p) {
         if (!x || x.esgotado || !x[turno]) return erro('Uma proteína escolhida acabou. Escolha outra, por favor.');
         det += (det ? ' + ' : '') + x.nome;
       }
+    }
+    if (pr.qtd_proteinas > 0 && acompLista.length && Array.isArray(it.acomp)) {
+      const esc = it.acomp.map(function (a) { return norm_(a); });
+      const sem = acompLista.filter(function (a) { return esc.indexOf(norm_(a)) < 0; });
+      if (sem.length === acompLista.length) det += (det ? ' · ' : '') + 'sem acompanhamentos';
+      else if (sem.length) det += (det ? ' · ' : '') + 'sem ' + sem.join(', ').toLowerCase();
     }
     if (pr.sabores.length) {
       if (pr.sabores.indexOf(String(it.sabor || '')) < 0) return erro('Escolha o sabor de ' + pr.nome + '.');
@@ -332,8 +355,8 @@ function criarPedido_(p) {
   }
 
   let fid = false;
-  const cli = cliente_(tel);
-  if (cfg.fidelidade && sim_(cfg.fidelidade.ativo, false) && cli && cli.desde_premio >= Math.max(parseInt(cfg.fidelidade.a_cada, 10) || 10, 1)) {
+  const cli = tel ? cliente_(tel) : null;
+  if (tel && cfg.fidelidade && sim_(cfg.fidelidade.ativo, false) && cli && cli.desde_premio >= Math.max(parseInt(cfg.fidelidade.a_cada, 10) || 10, 1)) {
     fid = true; desc += num_(cfg.fidelidade.desconto);
   }
   desc = Math.min(desc, sub);
@@ -341,7 +364,7 @@ function criarPedido_(p) {
 
   const pag = String(p.pagamento || '');
   const chavePag = { 'Pix': 'pix', 'Dinheiro': 'dinheiro', 'Cartão': 'cartao' }[pag];
-  if (!chavePag || !sim_(cfg.pagamentos && cfg.pagamentos[chavePag], true)) return erro('Escolha a forma de pagamento.');
+  if (!chavePag || (!manual && !sim_(cfg.pagamentos && cfg.pagamentos[chavePag], true))) return erro('Escolha a forma de pagamento.');
   let troco = pag === 'Dinheiro' ? num_(p.troco) : 0;
   if (troco > 0 && troco < total) return erro('O troco precisa ser para um valor maior que o total.');
 
@@ -350,15 +373,15 @@ function criarPedido_(p) {
   const id = proximoId_();
   const numero = doDia.reduce(function (m, x) { return Math.max(m, x.numero); }, 0) + 1;
   const agoraIso = new Date().toISOString();
-  const codigo = Utilities.getUuid().replace(/-/g, '').slice(0, 12);
+  const codigo = (manual ? 'm' : '') + Utilities.getUuid().replace(/-/g, '').slice(0, manual ? 11 : 12);
   const resumo = itens.map(function (i) { return i.qtd + 'x ' + i.nome + (i.detalhes ? ' (' + i.detalhes + ')' : ''); }).join('; ');
   const ped = { id: id, dia: h.dia, numero: numero, hora: parseInt(h.hm, 10), criado_em: agoraIso, atualizado_em: agoraIso, turno: turno,
     cliente: seguro_(nome), telefone: tel, tipo: tipo, endereco: seguro_(endereco), agendado: agendado, resumo: seguro_(resumo),
     subtotal: sub, taxa: taxa, desconto: desc, total: total, pagamento: pag, troco: troco, cupom: codCupom, fidelidade: fid,
-    obs: seguro_(String(p.obs || '').slice(0, 300)), status: 'Novo', codigo: codigo, itens: JSON.stringify(itens) };
+    obs: seguro_(String(p.obs || '').slice(0, 300)), status: manual ? 'Preparando' : 'Novo', codigo: codigo, itens: JSON.stringify(itens) };
   aba_('Pedidos').appendRow(ABAS.Pedidos.map(function (c) { return ped[c]; }));
-  registrarCliente_(cli, tel, nome, h.dia, fid);
-  guardarCache_('p_' + id, { codigo: codigo, status: 'Novo', numero: numero, tipo: tipo }, 21600);
+  if (tel) registrarCliente_(cli, tel, nome, h.dia, fid);
+  guardarCache_('p_' + id, { codigo: codigo, status: ped.status, numero: numero, tipo: tipo }, 21600);
   doDia.push(pedObj_(ABAS.Pedidos.map(function (c) { return ped[c]; })));
   guardarCache_('vend_' + h.dia, { almoco: contarVendidos_(doDia, 'almoco'), noite: contarVendidos_(doDia, 'noite') }, 21600);
   subirVersao_();
@@ -604,7 +627,7 @@ function pedObj_(r, row) {
     telefone: String(o.telefone), tipo: String(o.tipo), endereco: String(o.endereco), agendado: hm_(o.agendado),
     itens: itens, subtotal: num_(o.subtotal), taxa: num_(o.taxa), desconto: num_(o.desconto), total: num_(o.total),
     pagamento: String(o.pagamento), troco: num_(o.troco), cupom: String(o.cupom || ''), fidelidade: sim_(o.fidelidade, false),
-    obs: String(o.obs || ''), status: String(o.status || 'Novo'), codigo: String(o.codigo) };
+    obs: String(o.obs || ''), status: String(o.status || 'Novo'), codigo: String(o.codigo), manual: String(o.codigo).charAt(0) === 'm' };
 }
 
 function contarVendidos_(doDia, turno) {

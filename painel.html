@@ -59,6 +59,19 @@ h1,h2,h3{font-family:Oswald,sans-serif;font-weight:600;letter-spacing:.2px;line-
 .icone-btn.desl{opacity:.45}
 .sair-topo{width:auto;padding:0 12px;gap:6px;display:inline-flex;align-items:center;font-weight:700;font-size:13px;color:var(--brasa)}
 @media(max-width:520px){.sair-topo span{display:none}.sair-topo{padding:0;width:40px;justify-content:center}}
+.mm-prod{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--linha)}
+.mm-prod .n{flex:1;min-width:0;font-weight:600}
+.mm-prod .n small{display:block;color:var(--cinza);font-weight:500}
+.mm-esc{background:var(--fundo);border-radius:12px;padding:12px;margin:8px 0}
+.mm-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.mm-chips button{padding:6px 10px;border-radius:999px;border:1.5px solid var(--linha);background:var(--papel);font-weight:600;font-size:13px}
+.mm-chips button[aria-pressed=true]{background:var(--carvao);color:#fff;border-color:var(--carvao)}
+.mm-linha{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--linha)}
+.mm-linha .n{flex:1}.mm-linha small{display:block;color:var(--cinza)}
+.mm-total{display:flex;justify-content:space-between;font-size:18px;font-weight:800;margin-top:12px}
+.bairro-l{display:flex;gap:8px;align-items:center;margin-top:8px}
+.bairro-l .campo:first-child{flex:1}
+.bairro-l .campo:nth-child(2){width:110px}
 .acomp-box{margin:4px 0 14px;padding:12px;border-radius:12px;background:var(--fundo)}
 .acomp-box .rot{margin:0}
 .acomp-box .lin{display:flex;gap:8px;margin-top:6px}
@@ -309,6 +322,7 @@ table.tab{width:100%;border-collapse:collapse;font-size:13.5px}
         <button class="btn btn-l btn-pq" id="btnHoje">Hoje</button>
         <span class="esp"></span>
         <button class="btn btn-l btn-pq" id="btnNotif" hidden>Ativar notificações</button>
+        <button class="btn btn-p" id="btnPedManual">+ Novo pedido</button>
       </div>
       <div class="resumo-dia" id="resumoDia"></div>
       <div class="seg colunas-tabs" id="colTabs"></div>
@@ -434,6 +448,37 @@ table.tab{width:100%;border-collapse:collapse;font-size:13.5px}
     <p class="login-erro" id="prodErro" style="color:var(--brasa)"></p>
     <div class="folha-rod"><button type="button" class="btn btn-perigo" id="btnExcluirProd">Excluir</button><button class="btn btn-p" id="btnSalvarProd">Salvar produto</button></div>
   </form>
+</div>
+
+<div class="modal" id="mManual" hidden>
+  <div class="folha" style="max-width:640px">
+    <div class="folha-topo"><h2>Novo pedido</h2><button type="button" class="fechar" data-fechar aria-label="Fechar">×</button></div>
+    <p style="color:var(--cinza);font-size:13px">Para pedidos do balcão ou por telefone. Entra direto em "Preparo".</p>
+    <div class="seg" id="mmTurno" style="margin-top:10px"></div>
+    <input class="campo" id="mmBusca" type="search" placeholder="Buscar produto" style="margin-top:10px;width:100%">
+    <div id="mmProdutos" style="max-height:260px;overflow:auto;margin-top:6px"></div>
+    <div id="mmEscolha"></div>
+    <h3 style="margin-top:14px">Itens do pedido</h3>
+    <div id="mmItens"><p class="vazio" style="padding:10px 0">Nenhum item ainda.</p></div>
+    <div class="duas" style="margin-top:10px">
+      <label class="rot">Nome do cliente<input class="campo" id="mmNome" maxlength="60" placeholder="Balcão"></label>
+      <label class="rot">Telefone (opcional)<input class="campo" id="mmTel" inputmode="tel" maxlength="16"></label>
+    </div>
+    <div class="rot">Como vai receber</div>
+    <div class="seg" id="mmTipo"><button data-mt="local" aria-pressed="true">Comer no local</button><button data-mt="retirada" aria-pressed="false">Retirada</button><button data-mt="entrega" aria-pressed="false">Entrega</button></div>
+    <div id="mmEntrega" hidden>
+      <label class="rot">Endereço<input class="campo" id="mmEnd" maxlength="160" placeholder="Rua, número, complemento"></label>
+      <div class="duas"><label class="rot">Bairro<input class="campo" id="mmBairro" maxlength="60"><select class="campo" id="mmBairroSel" hidden></select></label>
+      <label class="rot">Taxa de entrega (R$)<input class="campo" id="mmTaxa" inputmode="decimal" value="0"></label></div>
+    </div>
+    <div class="rot">Pagamento</div>
+    <div class="seg" id="mmPag"><button data-mp="Pix" aria-pressed="false">Pix</button><button data-mp="Dinheiro" aria-pressed="false">Dinheiro</button><button data-mp="Cartão" aria-pressed="false">Cartão</button></div>
+    <label class="rot" id="mmTrocoBox" hidden>Troco para (R$)<input class="campo" id="mmTroco" inputmode="decimal"></label>
+    <label class="rot">Observação<input class="campo" id="mmObs" maxlength="300"></label>
+    <div class="mm-total"><span>Total</span><span id="mmTotal">R$ 0,00</span></div>
+    <p class="login-erro" id="mmErro" style="color:var(--brasa)"></p>
+    <div class="folha-rod"><button class="btn btn-p" id="btnMmLancar">Lançar pedido</button></div>
+  </div>
 </div>
 
 <iframe id="impressao" title="Impressão" style="position:absolute;width:0;height:0;border:0" aria-hidden="true"></iframe>
@@ -610,7 +655,7 @@ function cartaoPedido(p) {
   const pag = p.pagamento === 'Dinheiro' && Number(p.troco) > 0 ? `Dinheiro, troco para ${brl(p.troco)}` : p.pagamento === 'Cartão' ? 'Cartão na maquininha' : p.pagamento;
   return `<article class="ped st-${p.status}" data-id="${p.id}">
     <div class="ped-cab"><h3>#${p.numero} ${esc(p.cliente)}</h3><time>${hora(p.criado_em)}</time></div>
-    <div><span class="etq ${p.tipo === 'entrega' ? 'entrega' : ''}">${TIPOS[p.tipo] || p.tipo}</span>${p.agendado ? `<span class="etq agenda">Para ${esc(p.agendado)}</span>` : ''}${p.status === 'Saiu' ? '<span class="etq entrega">Em rota</span>' : ''}${p.status === 'Cancelado' ? '<span class="etq cancel">Cancelado</span>' : ''}${p.cupom ? `<span class="etq desc">Cupom ${esc(p.cupom)}</span>` : ''}${p.fidelidade ? '<span class="etq desc">Fidelidade</span>' : ''}</div>
+    <div><span class="etq ${p.tipo === 'entrega' ? 'entrega' : ''}">${TIPOS[p.tipo] || p.tipo}</span>${p.agendado ? `<span class="etq agenda">Para ${esc(p.agendado)}</span>` : ''}${p.manual ? '<span class="etq agenda">Balcão</span>' : ''}${p.status === 'Saiu' ? '<span class="etq entrega">Em rota</span>' : ''}${p.status === 'Cancelado' ? '<span class="etq cancel">Cancelado</span>' : ''}${p.cupom ? `<span class="etq desc">Cupom ${esc(p.cupom)}</span>` : ''}${p.fidelidade ? '<span class="etq desc">Fidelidade</span>' : ''}</div>
     <ul>${(p.itens || []).map(i => `<li>${i.qtd}× ${esc(i.nome)}${i.detalhes ? `<small>${esc(i.detalhes)}</small>` : ''}${i.obs ? `<small>Obs.: ${esc(i.obs)}</small>` : ''}</li>`).join('')}</ul>
     ${p.endereco ? `<p class="info"><b>Endereço:</b> ${esc(p.endereco)}</p>` : ''}
     ${p.obs ? `<p class="info"><b>Obs.:</b> ${esc(p.obs)}</p>` : ''}
@@ -690,7 +735,7 @@ function renderHoje() {
     const vend = (D.vendidos || {})[t] || 0, marcadas = prots.filter(p => p[t]).length;
     return `<div class="cartao"><h2>${esc(nomeTurno(c, t))} <small>${marcadas} de ${prots.length} marcadas</small></h2>
       <div class="acomp-box"><label class="rot">Acompanhamentos de hoje <small style="color:var(--cinza);font-weight:500">(aparece no cardápio e na arte)</small></label>
-        <div class="lin"><input class="campo" data-acomp="${t}" maxlength="140" value="${esc(((c.acompanhamentos || {})[t]) || '')}" placeholder="Ex.: arroz, feijão, macarrão, salada e farofa"><button class="btn btn-s btn-pq" data-salvaracomp="${t}">Salvar</button></div></div>
+        <div class="lin"><input class="campo" data-acomp="${t}" maxlength="140" value="${esc(((c.acompanhamentos || {})[t]) || '')}" placeholder="Separe por vírgula: arroz, feijão, macarrão, salada, farofa"><button class="btn btn-s btn-pq" data-salvaracomp="${t}">Salvar</button></div></div>
       <p class="limite-info">${lim.ativo ? `Marmitas e pratinhos: <b>${vend} vendidos de ${lim[t]}</b>` : `Marmitas e pratinhos vendidos hoje: <b>${vend}</b>`}</p>
       <div style="display:flex;gap:8px;margin-bottom:6px"><button class="btn btn-l btn-pq" data-todas="${t}" data-v="1">Marcar todas</button><button class="btn btn-l btn-pq" data-todas="${t}" data-v="0">Desmarcar todas</button></div>
       ${prots.length ? prots.map(p => `<div class="prot ${p.esgotado ? 'acabou' : ''}">
@@ -1012,11 +1057,16 @@ function renderAjustes() {
         <option value="auto" ${(c.modo || 'auto') === 'auto' ? 'selected' : ''}>Automático pelos horários</option>
         <option value="aberta" ${c.modo === 'aberta' ? 'selected' : ''}>Aberta agora (ignora horários)</option>
         <option value="fechada" ${c.modo === 'fechada' ? 'selected' : ''}>Fechada agora</option></select></label>
+      <p style="font-size:12.5px;color:var(--cinza);margin-top:10px">No modo automático, o cardápio do almoço aparece sozinho no horário do almoço e o da noite no horário da noite. Fora desses horários, o cliente vê o próximo cardápio.</p>
       <div style="margin-top:8px">${turnoBox('almoco')}${turnoBox('noite')}</div>
     </div>
     <div class="cartao"><h2>Como o cliente recebe</h2>
       ${op('Entrega', 'O cliente informa o endereço', sw('entrega.ativo', c.entrega.ativo))}
-      <label class="rot sub-op">Taxa de entrega (R$, 0 = grátis)<input class="campo" data-aj="entrega.taxa" data-num value="${String(c.entrega.taxa ?? 0).replace('.', ',')}" inputmode="decimal"></label>
+      <label class="rot sub-op">Taxa única de entrega (R$, 0 = grátis)<input class="campo" data-aj="entrega.taxa" data-num value="${String(c.entrega.taxa ?? 0).replace('.', ',')}" inputmode="decimal"></label>
+      <div class="sub-op" style="margin-top:12px"><strong style="font-size:14px">Taxa por bairro</strong>
+        <p style="font-size:12.5px;color:var(--cinza)">Se cadastrar bairros, o cliente escolhe o bairro numa lista e paga a taxa dele (a taxa única deixa de valer). Só entrega nos bairros da lista.</p>
+        <div id="listaBairros"></div>
+        <button type="button" class="btn btn-l btn-pq" id="btnAddBairro" style="margin-top:8px">+ Adicionar bairro</button></div>
       ${op('Retirar no local', '', sw('retirada', c.retirada !== false))}
       ${op('Comer no local', '', sw('local', c.local !== false))}
     </div>
@@ -1032,6 +1082,7 @@ function renderAjustes() {
     </div>
     <div class="cartao"><h2>Recursos do cardápio</h2>
       ${op('Arte do dia ao abrir', 'O cliente vê a arte com os pratos de hoje', sw('arte_abertura', c.arte_abertura))}
+      ${op('Cliente escolhe os acompanhamentos', 'Nas marmitas e pratinhos, o cliente pode tirar o que não quiser', sw('escolher_acomp', c.escolher_acomp !== false))}
       ${op('Pedir de novo', 'O cliente repete o último pedido com um toque', sw('pedir_de_novo', c.pedir_de_novo))}
       ${op('Encomenda com horário', 'O cliente agenda o horário, até antes de abrir', sw('encomenda', c.encomenda))}
     </div>
@@ -1055,7 +1106,7 @@ function renderAjustes() {
       <label class="rot">Repita a senha<input class="campo" id="sRep" type="password" inputmode="numeric" minlength="6" maxlength="20" autocomplete="new-password" required></label></div>
       <button class="btn btn-s" style="margin-top:12px">Trocar senha</button></form>
     </div>`;
-  renderCupons(); atualizarBarraSalvar();
+  renderCupons(); renderBairros(); atualizarBarraSalvar();
   $('#formCupom').onsubmit = criarCupom;
   $('#formSenha').onsubmit = trocarSenha;
 }
@@ -1081,6 +1132,7 @@ $('#btnSalvarAj').onclick = async () => {
     const x = c.turnos[t]; if (!x || x.ativo === false) continue;
     if (min(x.inicio) == null || min(x.fim) == null || min(x.fim) <= min(x.inicio)) return toast(`Confira os horários do ${nomeTurno(c, t).toLowerCase()}: fecha precisa ser depois de abre (use até 23:59).`, 'erro');
   }
+  if (c.entrega && Array.isArray(c.entrega.bairros)) c.entrega.bairros = c.entrega.bairros.filter(b => b.nome && b.nome.trim()).map(b => ({ nome: b.nome.trim(), taxa: Number(b.taxa) || 0 }));
   const btn = $('#btnSalvarAj'); btn.disabled = true;
   const r = await chamar('admin_config', { p_loja: L, p: c, p_nome: AJ.nome }, 'Ajustes salvos');
   btn.disabled = false;
@@ -1151,6 +1203,129 @@ document.addEventListener('change', async e => {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $$('.modal').forEach(m => m.hidden = true); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden && sess && D) { sync(); if (viewAtual === 'hoje' || viewAtual === 'produtos') carregarDados().then(() => irPara(viewAtual)).catch(() => {}); } });
 window.addEventListener('beforeunload', e => { if (ajMudou()) { e.preventDefault(); e.returnValue = ''; } });
+
+
+/* ================= TAXA POR BAIRRO (Ajustes) ================= */
+function renderBairros() {
+  const el = $('#listaBairros'); if (!el || !AJ) return;
+  const bs = Array.isArray(AJ.cfg.entrega.bairros) ? AJ.cfg.entrega.bairros : [];
+  el.innerHTML = bs.length ? bs.map((b, i) => `<div class="bairro-l"><input class="campo" data-bn="${i}" value="${esc(b.nome || '')}" placeholder="Nome do bairro" maxlength="60" aria-label="Bairro"><input class="campo" data-bt="${i}" value="${String(b.taxa ?? 0).replace('.', ',')}" inputmode="decimal" aria-label="Taxa"><button type="button" class="btn btn-perigo btn-pq" data-bdel="${i}">Tirar</button></div>`).join('')
+    : '<p style="font-size:13px;color:var(--cinza);margin-top:6px">Nenhum bairro cadastrado. Vale a taxa única.</p>';
+}
+$('#ajustes').addEventListener('input', e => {
+  const d = e.target.dataset; if (!AJ) return;
+  if (d.bn !== undefined) { AJ.cfg.entrega.bairros[+d.bn].nome = e.target.value.trim(); atualizarBarraSalvar(); }
+  if (d.bt !== undefined) { AJ.cfg.entrega.bairros[+d.bt].taxa = numBR(e.target.value); atualizarBarraSalvar(); }
+});
+$('#ajustes').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || !AJ) return;
+  if (b.id === 'btnAddBairro') { AJ.cfg.entrega.bairros = AJ.cfg.entrega.bairros || []; AJ.cfg.entrega.bairros.push({ nome: '', taxa: 0 }); renderBairros(); atualizarBarraSalvar(); const ult = $$('[data-bn]').pop(); ult && ult.focus(); }
+  else if (b.dataset.bdel !== undefined) { AJ.cfg.entrega.bairros.splice(+b.dataset.bdel, 1); renderBairros(); atualizarBarraSalvar(); }
+});
+
+/* ================= PEDIDO MANUAL (balcão / telefone) ================= */
+let MM = null;
+const listaAcomp = t => String(((D.config.acompanhamentos || {})[t]) || '').split(/,|;|\s+e\s+/i).map(x => x.trim()).filter(Boolean);
+const bairrosCfg = () => ((D.config.entrega || {}).bairros || []).filter(b => b && b.nome);
+function abrirManual() {
+  const c = D.config, ativos = TURNOS.filter(t => turnoAtivo(c, t));
+  const t = B.turnoEm(c, B.minutosAgora()) || ativos.find(x => min(c.turnos[x].inicio) > B.minutosAgora()) || ativos[0] || 'almoco';
+  MM = { turno: t, itens: [], tipo: 'local', pag: '', esc: null };
+  ['#mmNome', '#mmTel', '#mmEnd', '#mmBairro', '#mmTroco', '#mmObs', '#mmBusca'].forEach(s => $(s).value = '');
+  $('#mmTaxa').value = String(Number(c.entrega && c.entrega.taxa) || 0).replace('.', ',');
+  const bs = bairrosCfg();
+  $('#mmBairro').hidden = !!bs.length; $('#mmBairroSel').hidden = !bs.length;
+  $('#mmBairroSel').innerHTML = '<option value="">Escolha o bairro</option>' + bs.map(b => `<option value="${esc(b.nome)}">${esc(b.nome)} · ${brl(Number(b.taxa) || 0)}</option>`).join('');
+  $('#mmErro').textContent = '';
+  renderManual(); $('#mManual').hidden = false;
+}
+function renderManual() {
+  const c = D.config, t = MM.turno, busca = B.norm($('#mmBusca').value || '');
+  $('#mmTurno').innerHTML = TURNOS.filter(x => turnoAtivo(c, x)).map(x => `<button data-mmturno="${x}" aria-pressed="${x === t}">${esc(nomeTurno(c, x))}</button>`).join('');
+  const prods = D.produtos.filter(p => p.ativo && !p.esgotado && (!p.turnos.length || p.turnos.includes(t)) && (!busca || B.norm(p.nome).includes(busca)));
+  $('#mmProdutos').innerHTML = prods.map(p => `<div class="mm-prod"><span class="n">${esc(p.nome)}<small>${brl(p.preco)}${p.qtd_proteinas ? ' · ' + p.qtd_proteinas + (p.qtd_proteinas > 1 ? ' proteínas' : ' proteína') : ''}</small></span><button class="btn btn-s btn-pq" data-mmadd="${p.id}">Adicionar</button></div>`).join('') || '<p class="vazio">Nenhum produto.</p>';
+  // escolha de proteínas / acompanhamentos / sabor
+  const e = MM.esc;
+  if (e) {
+    const p = e.p, prots = D.proteinas.filter(x => x[t] && !x.esgotado);
+    $('#mmEscolha').innerHTML = `<div class="mm-esc"><strong>${esc(p.nome)}</strong>
+      ${Array.from({ length: p.qtd_proteinas }, (_, i) => `<label class="rot">Proteína ${p.qtd_proteinas > 1 ? i + 1 : ''}<select class="campo" data-mmprot="${i}"><option value="">Escolha</option>${prots.map(x => `<option value="${x.id}" ${e.prots[i] === x.id ? 'selected' : ''}>${esc(x.nome)}</option>`).join('')}</select></label>`).join('')}
+      ${e.acs.length ? `<div class="rot">Acompanhamentos <small style="font-weight:500">(toque para tirar)</small></div><div class="mm-chips">${e.acs.map(a => `<button data-mmacomp="${esc(a)}" aria-pressed="${e.acomp.has(a)}">${esc(a.charAt(0).toUpperCase() + a.slice(1))}</button>`).join('')}</div>` : ''}
+      ${p.sabores && p.sabores.length ? `<label class="rot">Sabor<select class="campo" id="mmSabor"><option value="">Escolha</option>${p.sabores.map(x => `<option ${e.sabor === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>` : ''}
+      <div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-l btn-pq" data-mmcancel>Cancelar</button><button class="btn btn-p btn-pq" data-mmok>Adicionar ao pedido</button></div></div>`;
+  } else $('#mmEscolha').innerHTML = '';
+  $('#mmItens').innerHTML = MM.itens.length ? MM.itens.map((it, i) => `<div class="mm-linha"><span class="n"><b>${it.qtd}x ${esc(it.nome)}</b>${it.det ? `<small>${esc(it.det)}</small>` : ''}</span><span>${brl(it.preco * it.qtd)}</span><button class="btn btn-l btn-pq" data-mmmenos="${i}" aria-label="Tirar um">−</button><button class="btn btn-l btn-pq" data-mmmais="${i}" aria-label="Mais um">+</button></div>`).join('') : '<p class="vazio" style="padding:10px 0">Nenhum item ainda.</p>';
+  $$('#mmTipo button').forEach(b => b.setAttribute('aria-pressed', b.dataset.mt === MM.tipo));
+  $$('#mmPag button').forEach(b => b.setAttribute('aria-pressed', b.dataset.mp === MM.pag));
+  $('#mmEntrega').hidden = MM.tipo !== 'entrega';
+  $('#mmTrocoBox').hidden = MM.pag !== 'Dinheiro';
+  totalManual();
+}
+function totalManual() {
+  const sub = MM.itens.reduce((s, i) => s + i.preco * i.qtd, 0);
+  const taxa = MM.tipo === 'entrega' ? numBR($('#mmTaxa').value) || 0 : 0;
+  $('#mmTotal').textContent = brl(sub + taxa); return sub + taxa;
+}
+function addManual(p, prots, acomp, sabor) {
+  const sem = MM.esc ? MM.esc.acs.filter(a => !MM.esc.acomp.has(a)) : [];
+  const nomes = prots.map(id => (D.proteinas.find(x => x.id === id) || {}).nome || '');
+  const det = [nomes.join(' + '), sem.length ? (acomp && !acomp.length ? 'sem acompanhamentos' : 'sem ' + sem.join(', ').toLowerCase()) : '', sabor].filter(Boolean).join(' · ');
+  const k = [p.id, prots.join(','), sem.join(','), sabor].join('|');
+  const ex = MM.itens.find(x => x.k === k);
+  if (ex) ex.qtd++; else MM.itens.push({ k, id: p.id, nome: p.nome, preco: Number(p.preco), qtd: 1, proteinas: prots, acomp, sabor, det });
+}
+$('#btnPedManual').onclick = abrirManual;
+$('#mmBusca').oninput = () => renderManual();
+$('#mmTaxa').oninput = totalManual;
+$('#mmBairroSel').onchange = () => { const b = bairrosCfg().find(x => x.nome === $('#mmBairroSel').value); if (b) $('#mmTaxa').value = String(Number(b.taxa) || 0).replace('.', ','); totalManual(); };
+$('#mManual').addEventListener('change', e => {
+  const d = e.target.dataset;
+  if (d.mmprot !== undefined && MM.esc) MM.esc.prots[+d.mmprot] = e.target.value;
+  if (e.target.id === 'mmSabor' && MM.esc) MM.esc.sabor = e.target.value;
+});
+$('#mManual').addEventListener('click', async e => {
+  const b = e.target.closest('button'); if (!b || !MM) return;
+  const d = b.dataset;
+  if (d.mmturno) { if (MM.itens.length && !confirm('Trocar o turno limpa os itens. Continuar?')) return; MM.turno = d.mmturno; MM.itens = []; MM.esc = null; renderManual(); }
+  else if (d.mmadd) {
+    const p = D.produtos.find(x => x.id === d.mmadd); if (!p) return;
+    const acs = p.qtd_proteinas ? listaAcomp(MM.turno) : [];
+    if (!p.qtd_proteinas && !(p.sabores && p.sabores.length)) { addManual(p, [], null, ''); MM.esc = null; }
+    else MM.esc = { p, prots: [], acs, acomp: new Set(acs), sabor: '' };
+    renderManual();
+  }
+  else if (d.mmacomp !== undefined) { const s = MM.esc.acomp; s.has(d.mmacomp) ? s.delete(d.mmacomp) : s.add(d.mmacomp); renderManual(); }
+  else if (d.mmcancel !== undefined) { MM.esc = null; renderManual(); }
+  else if (d.mmok !== undefined) {
+    const e2 = MM.esc, p = e2.p, prots = e2.prots.filter(Boolean);
+    if (prots.length !== p.qtd_proteinas) return toast(p.qtd_proteinas > 1 ? `Escolha as ${p.qtd_proteinas} proteínas.` : 'Escolha a proteína.', 'erro');
+    if (p.sabores && p.sabores.length && !e2.sabor) return toast('Escolha o sabor.', 'erro');
+    addManual(p, prots, e2.acs.length ? e2.acs.filter(a => e2.acomp.has(a)) : null, e2.sabor); MM.esc = null; renderManual();
+  }
+  else if (d.mmmenos !== undefined) { const it = MM.itens[+d.mmmenos]; it.qtd--; if (it.qtd <= 0) MM.itens.splice(+d.mmmenos, 1); renderManual(); }
+  else if (d.mmmais !== undefined) { MM.itens[+d.mmmais].qtd++; renderManual(); }
+  else if (d.mt) { MM.tipo = d.mt; renderManual(); }
+  else if (d.mp) { MM.pag = d.mp; renderManual(); }
+  else if (b.id === 'btnMmLancar') {
+    const erro = m => { $('#mmErro').textContent = m; };
+    if (!MM.itens.length) return erro('Adicione pelo menos um item.');
+    if (MM.tipo === 'entrega' && $('#mmEnd').value.trim().length < 5) return erro('Informe o endereço da entrega.');
+    const bairro = bairrosCfg().length ? $('#mmBairroSel').value : $('#mmBairro').value.trim();
+    if (MM.tipo === 'entrega' && bairrosCfg().length && !bairro) return erro('Escolha o bairro.');
+    if (!MM.pag) return erro('Escolha a forma de pagamento.');
+    const tel = digitos($('#mmTel').value);
+    if (tel && tel.length < 10) return erro('Telefone com DDD, ou deixe em branco.');
+    b.disabled = true; b.textContent = 'Lançando…';
+    const r = await chamar('admin_pedido_manual', { p: {
+      turno: MM.turno, cliente: $('#mmNome').value.trim(), telefone: tel, tipo: MM.tipo,
+      endereco: MM.tipo === 'entrega' ? [$('#mmEnd').value.trim(), bairro && 'Bairro ' + bairro].filter(Boolean).join(' · ') : '',
+      bairro, taxa: MM.tipo === 'entrega' ? numBR($('#mmTaxa').value) || 0 : 0, pagamento: MM.pag, troco: MM.pag === 'Dinheiro' ? numBR($('#mmTroco').value) || 0 : 0,
+      obs: $('#mmObs').value.trim(), itens: MM.itens.map(i => ({ id: i.id, qtd: i.qtd, proteinas: i.proteinas, acomp: i.acomp || undefined, sabor: i.sabor }))
+    } }, 'Pedido lançado');
+    b.disabled = false; b.textContent = 'Lançar pedido';
+    if (r) { vistos.add(r.id); $('#mManual').hidden = true; diaVisto = D.hoje; $('#diaPedidos').value = diaVisto; colMobile = 'preparo'; await carregarPedidos(); }
+  }
+});
 
 /* ================= ABRIR ================= */
 if (sess) iniciar().catch(() => sairPainel());

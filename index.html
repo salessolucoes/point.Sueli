@@ -246,6 +246,7 @@ label.campo{display:block;margin-top:12px;font-size:13px;font-weight:600;color:v
   <div class="folha" role="dialog" aria-modal="true" aria-labelledby="itemNome">
     <div class="folha-topo"><div><h2 id="itemNome"></h2><p class="sub" id="itemDesc"></p></div><button class="fechar" data-fechar aria-label="Fechar">×</button></div>
     <div class="bloco" id="blocoProt" hidden><h3><span id="protTitulo">Escolha a proteína</span><small id="protConta"></small></h3><div class="escolhas" id="protLista"></div></div>
+    <div class="bloco" id="blocoAcomp" hidden><h3>Acompanhamentos</h3><p class="sub" style="margin:-4px 0 8px">Toque para tirar o que não quiser.</p><div class="opcoes" id="acompLista"></div></div>
     <div class="bloco" id="blocoSabor" hidden><h3>Sabor</h3><div class="opcoes" id="saborLista"></div></div>
     <label class="campo">Alguma observação? <input id="itemObs" maxlength="120" placeholder="Ex.: sem feijão, mais arroz"></label>
     <div class="rodape-folha" style="display:flex;gap:12px;align-items:center">
@@ -265,7 +266,7 @@ label.campo{display:block;margin-top:12px;font-size:13px;font-weight:600;color:v
     <div class="bloco" id="blocoReceber"><h3>Como você quer receber?</h3><div class="opcoes" id="tipos"></div>
       <div id="boxEndereco" hidden>
         <label class="campo">Rua e número <input id="cEnd" maxlength="120" autocomplete="address-line1" placeholder="Ex.: Rua Antero de Quental, 301"></label>
-        <div class="duas"><label class="campo">Bairro <input id="cBairro" maxlength="60" placeholder="Ex.: São Bento"></label>
+        <div class="duas"><label class="campo">Bairro <input id="cBairro" maxlength="60" placeholder="Ex.: São Bento"><select id="cBairroSel" hidden></select></label>
         <label class="campo">Complemento <input id="cComp" maxlength="60" placeholder="Apto, bloco, casa"></label></div>
         <label class="campo">Ponto de referência <input id="cRef" maxlength="80" placeholder="Opcional"></label>
       </div>
@@ -336,6 +337,7 @@ const K = { cache: 'cache_' + L, car: 'carrinho_' + L, cli: 'cliente_' + L, ult:
 
 let D = null;                 // dados do cardápio
 let turno = null;             // turno sendo visto
+let turnoManual = 0;          // quando o cliente trocou o turno na mão
 let carrinho = ls.get(K.car, { turno: null, linhas: [] });
 let sel = {};                 // escolhas no carrinho (tipo, pagamento, quando)
 let cupom = null, fid = null;
@@ -422,6 +424,14 @@ function motivoIndisp(p) {
 function renderTudo() { renderQuadro(); renderMenu(); renderRepetir(); atualizarBarra(); }
 
 function acompDo(t) { const a = cfg().acompanhamentos || {}; return String(a[t] || '').trim(); }
+function listaAcomp(t) { return acompDo(t).split(/,|;|\s+e\s+/i).map(x => x.trim()).filter(Boolean); }
+function bairrosLista() { const e = cfg().entrega || {}; return Array.isArray(e.bairros) ? e.bairros.filter(b => b && b.nome) : []; }
+function bairroAtual() { return bairrosLista().length ? $('#cBairroSel').value : $('#cBairro').value.trim(); }
+function taxaEntrega() {
+  const c = cfg(), bs = bairrosLista();
+  if (!bs.length) return Number(c.entrega && c.entrega.taxa) || 0;
+  const b = bs.find(x => x.nome === $('#cBairroSel').value); return b ? Number(b.taxa) || 0 : 0;
+}
 function destaquesDo(t) { return D.produtos.filter(p => doTurno(p, t) && p.destaque && !p.esgotado).slice(0, 4); }
 function renderQuadro() {
   const c = cfg();
@@ -522,18 +532,18 @@ function garantirTurnoDoCarrinho() {
   if (!confirm(`Seu pedido atual é do ${nomeTurno(cfg(), carrinho.turno).toLowerCase()}. Começar um pedido novo para o ${nomeTurno(cfg(), turno).toLowerCase()}?`)) return false;
   carrinho = { turno, linhas: [] }; return true;
 }
-function addLinha(p, { qtd = 1, proteinas = [], sabor = '', obs = '' } = {}) {
+function addLinha(p, { qtd = 1, proteinas = [], sabor = '', obs = '', acomp = null, sem = [] } = {}) {
   if (!garantirTurnoDoCarrinho()) return false;
   if (p.conta_limite && cfg().limite && cfg().limite.ativo) {
     const r = restantes(turno);
     if (r <= 0) { toast('Esgotou por hoje.'); return false; }
     if (qtd > r) { toast(r === 1 ? 'Só resta 1 para hoje.' : `Só restam ${r} para hoje.`); return false; }
   }
-  const chave = [p.id, proteinas.slice().sort().join(','), sabor, obs].join('|');
+  const chave = [p.id, proteinas.slice().sort().join(','), sabor, obs, sem.join(',')].join('|');
   const ex = carrinho.linhas.find(l => l.k === chave);
   if (ex) ex.qtd += qtd;
   else carrinho.linhas.push({ k: chave, id: p.id, nome: p.nome, preco: Number(p.preco), qtd, proteinas,
-    protNomes: proteinas.map(id => (D.proteinas.find(x => x.id === id) || {}).nome || ''), sabor, obs, lim: !!p.conta_limite });
+    protNomes: proteinas.map(id => (D.proteinas.find(x => x.id === id) || {}).nome || ''), sabor, obs, acomp, sem, lim: !!p.conta_limite });
   salvarCarrinho(); renderMenu(); atualizarBarra(); return true;
 }
 function mudarSimples(id, d) {
@@ -548,7 +558,10 @@ function mudarSimples(id, d) {
 function abrirItem(p) {
   if (!podePedir(turno)) return;
   if (!p.qtd_proteinas && !(p.sabores && p.sabores.length)) { if (addLinha(p)) toast(p.nome + ' adicionado'); return; }
-  itemAberto = p; itemEsc = { prot: {}, sabor: '', qtd: 1 };
+  const acs = p.qtd_proteinas && cfg().escolher_acomp !== false ? listaAcomp(turno) : [];
+  itemAberto = p; itemEsc = { prot: {}, sabor: '', qtd: 1, acs, acomp: new Set(acs) };
+  $('#blocoAcomp').hidden = !acs.length;
+  $('#acompLista').innerHTML = acs.map(a => `<button class="opcao" data-acomp="${esc(a)}" aria-pressed="true">${esc(a.charAt(0).toUpperCase() + a.slice(1))}</button>`).join('');
   $('#itemNome').textContent = p.nome;
   $('#itemDesc').textContent = [p.descricao, p.qtd_proteinas && acompDo(turno) ? 'Acompanha: ' + acompDo(turno) : '', brl(p.preco)].filter(Boolean).join('. ');
   $('#blocoProt').hidden = !p.qtd_proteinas;
@@ -579,7 +592,9 @@ function confirmarItem() {
   const prots = []; Object.entries(itemEsc.prot).forEach(([id, q]) => { for (let i = 0; i < q; i++) prots.push(id); });
   if (n && prots.length !== n) { $('#itemErro').textContent = n === 1 ? 'Escolha a proteína.' : `Escolha ${n} proteínas.`; return; }
   if (p.sabores && p.sabores.length && !itemEsc.sabor) { $('#itemErro').textContent = 'Escolha o sabor.'; return; }
-  if (addLinha(p, { qtd: itemEsc.qtd, proteinas: prots, sabor: itemEsc.sabor, obs: $('#itemObs').value.trim() })) {
+  const acomp = itemEsc.acs.length ? itemEsc.acs.filter(a => itemEsc.acomp.has(a)) : null;
+  const sem = itemEsc.acs.filter(a => !itemEsc.acomp.has(a));
+  if (addLinha(p, { qtd: itemEsc.qtd, proteinas: prots, sabor: itemEsc.sabor, obs: $('#itemObs').value.trim(), acomp, sem })) {
     fechar($('#mItem')); toast(p.nome + ' adicionado');
   }
 }
@@ -591,7 +606,7 @@ function abrirCarrinho() {
   // tipos de entrega
   const tipos = [['entrega', 'Entrega', c.entrega && c.entrega.ativo], ['retirada', 'Retirar no local', c.retirada !== false], ['local', 'Comer no local', c.local !== false]].filter(t => t[2]);
   if (!tipos.find(t => t[0] === sel.tipo)) sel.tipo = tipos.length === 1 ? tipos[0][0] : (tipos.find(t => t[0] === cli.tipo) || [])[0] || '';
-  $('#tipos').innerHTML = tipos.map(t => `<button class="opcao" data-tipo="${t[0]}" aria-pressed="${sel.tipo === t[0]}">${t[1]}${t[0] === 'entrega' && Number(c.entrega.taxa) > 0 ? ' +' + brl(c.entrega.taxa).replace('R$ ', 'R$ ') : ''}</button>`).join('');
+  $('#tipos').innerHTML = tipos.map(t => `<button class="opcao" data-tipo="${t[0]}" aria-pressed="${sel.tipo === t[0]}">${t[1]}${t[0] === 'entrega' && !bairrosLista().length && Number(c.entrega.taxa) > 0 ? ' +' + brl(c.entrega.taxa) : ''}</button>`).join('');
   // pagamentos
   const pg = c.pagamentos || {};
   const pags = [['Pix', pg.pix !== false], ['Dinheiro', pg.dinheiro !== false], ['Cartão', pg.cartao !== false]].filter(x => x[1]).map(x => x[0]);
@@ -610,6 +625,12 @@ function abrirCarrinho() {
   if (!$('#cEnd').value) $('#cEnd').value = cli.endereco || '';
   if (!$('#cRef').value) $('#cRef').value = cli.ref || '';
   if (!$('#cBairro').value) $('#cBairro').value = cli.bairro || '';
+  const bs = bairrosLista();
+  $('#cBairro').hidden = !!bs.length; $('#cBairroSel').hidden = !bs.length;
+  if (bs.length) {
+    const atual = $('#cBairroSel').value || cli.bairro || '';
+    $('#cBairroSel').innerHTML = '<option value="">Escolha o bairro</option>' + bs.map(b => `<option value="${esc(b.nome)}" ${b.nome === atual ? 'selected' : ''}>${esc(b.nome)} · ${Number(b.taxa) > 0 ? brl(b.taxa) : 'entrega grátis'}</option>`).join('');
+  }
   if (!$('#cComp').value) $('#cComp').value = cli.comp || '';
   $('#carErro').textContent = '';
   renderCarrinho(); checarFidelidade(); abrir('#mCarrinho');
@@ -628,7 +649,7 @@ function renderCarrinho() {
   if (!carrinho.linhas.length) { fechar($('#mCarrinho')); return; }
   $('#carLinhas').innerHTML = carrinho.linhas.map((l, i) => `
     <div class="linha-car"><div class="c"><strong>${esc(l.nome)}</strong>
-      ${[l.protNomes.join(' + '), l.sabor, l.obs && ('Obs.: ' + l.obs)].filter(Boolean).map(t => `<small>${esc(t)}</small>`).join('')}</div>
+      ${[l.protNomes.join(' + '), l.sem && l.sem.length ? (l.acomp && !l.acomp.length ? 'Sem acompanhamentos' : 'Sem ' + l.sem.join(', ').toLowerCase()) : '', l.sabor, l.obs && ('Obs.: ' + l.obs)].filter(Boolean).map(t => `<small>${esc(t)}</small>`).join('')}</div>
       <div class="qtd"><button data-lmenos="${i}" aria-label="Diminuir">−</button><span>${l.qtd}</span><button data-lmais="${i}" aria-label="Aumentar">+</button></div>
       <span class="v">${brl(l.preco * l.qtd)}</span></div>`).join('') +
     `<button class="btn btn-l" style="margin-top:12px" data-fechar>Adicionar mais itens</button>`;
@@ -645,7 +666,7 @@ function renderCarrinho() {
 }
 function contas() {
   const c = cfg(), sub = totalCarrinho();
-  const taxa = sel.tipo === 'entrega' ? Number(c.entrega && c.entrega.taxa) || 0 : 0;
+  const taxa = sel.tipo === 'entrega' ? taxaEntrega() : 0;
   let dCupom = 0, dFid = 0;
   if (cupom && c.cupons && sub >= cupom.minimo) dCupom = cupom.tipo === 'pct' ? Math.round(sub * cupom.valor) / 100 : Number(cupom.valor);
   if (fid && fid.ativo && fid.feitos >= fid.a_cada) dFid = Number(fid.desconto) || 0;
@@ -687,7 +708,7 @@ async function finalizar() {
   const nome = $('#cNome').value.trim(), tel = digitos($('#cTel').value);
   if (!sel.tipo) return erro('Escolha como quer receber.');
   if (sel.tipo === 'entrega' && $('#cEnd').value.trim().length < 5) { $('#cEnd').focus(); return erro('Informe a rua e o número para a entrega.'); }
-  if (sel.tipo === 'entrega' && $('#cBairro').value.trim().length < 2) { $('#cBairro').focus(); return erro('Informe o bairro.'); }
+  if (sel.tipo === 'entrega' && bairroAtual().length < 2) { (bairrosLista().length ? $('#cBairroSel') : $('#cBairro')).focus(); return erro(bairrosLista().length ? 'Escolha o bairro da entrega.' : 'Informe o bairro.'); }
   if (sel.quando === 'agendar' && !$('#cHorario').value) return erro('Não há horários disponíveis para hoje.');
   if (nome.length < 2) { $('#cNome').focus(); return erro('Informe seu nome.'); }
   if (tel.length < 10) { $('#cTel').focus(); return erro('Informe seu WhatsApp com DDD.'); }
@@ -695,16 +716,16 @@ async function finalizar() {
   const { total } = contas();
   const troco = sel.pag === 'Dinheiro' ? numBR($('#cTroco').value) : 0;
   if (troco && troco < total) return erro('O troco precisa ser para um valor maior que o total.');
-  const endereco = sel.tipo === 'entrega' ? [$('#cEnd').value.trim(), $('#cComp').value.trim(), $('#cBairro').value.trim() && ('Bairro ' + $('#cBairro').value.trim()), $('#cRef').value.trim() && ('Ref.: ' + $('#cRef').value.trim())].filter(Boolean).join(' · ') : '';
+  const endereco = sel.tipo === 'entrega' ? [$('#cEnd').value.trim(), $('#cComp').value.trim(), bairroAtual() && ('Bairro ' + bairroAtual()), $('#cRef').value.trim() && ('Ref.: ' + $('#cRef').value.trim())].filter(Boolean).join(' · ') : '';
   const btn = $('#btnFinalizar'); btn.disabled = true; btn.textContent = 'Enviando…';
   try {
     const r = await rpc('criar_pedido', { p_loja: L, p: {
       turno: carrinho.turno, agendado: sel.quando === 'agendar' ? $('#cHorario').value : '', cliente: nome, telefone: tel,
-      tipo: sel.tipo, endereco, pagamento: sel.pag, troco, cupom: cupom ? cupom.codigo : '', obs: $('#cObs').value.trim(),
-      itens: carrinho.linhas.map(l => ({ id: l.id, qtd: l.qtd, proteinas: l.proteinas, sabor: l.sabor, obs: l.obs }))
+      tipo: sel.tipo, endereco, bairro: sel.tipo === 'entrega' ? bairroAtual() : '', pagamento: sel.pag, troco, cupom: cupom ? cupom.codigo : '', obs: $('#cObs').value.trim(),
+      itens: carrinho.linhas.map(l => ({ id: l.id, qtd: l.qtd, proteinas: l.proteinas, sabor: l.sabor, obs: l.obs, acomp: l.acomp || undefined }))
     } });
     if (!r.ok) throw new Error(r.erro);
-    ls.set(K.cli, { nome, telefone: tel, endereco: $('#cEnd').value.trim(), bairro: $('#cBairro').value.trim(), comp: $('#cComp').value.trim(), ref: $('#cRef').value.trim(), tipo: sel.tipo });
+    ls.set(K.cli, { nome, telefone: tel, endereco: $('#cEnd').value.trim(), bairro: bairroAtual(), comp: $('#cComp').value.trim(), ref: $('#cRef').value.trim(), tipo: sel.tipo });
     ls.set(K.ult, { linhas: carrinho.linhas, turno: carrinho.turno, ts: Date.now() });
     ls.set(K.ped, { id: r.id, codigo: r.codigo, numero: r.numero, total: r.total, pagamento: sel.pag, tipo: sel.tipo, status: 'Novo', ts: Date.now() });
     carrinho = { turno: null, linhas: [] }; salvarCarrinho();
@@ -832,13 +853,14 @@ document.addEventListener('click', e => {
   if (e.target.classList.contains('modal')) return fechar(e.target);
   const b = e.target.closest('button,a'); if (!b) return;
   const d = b.dataset;
-  if (d.turno) { turno = d.turno; renderTudo(); window.scrollTo({ top: 0 }); }
+  if (d.turno) { turno = d.turno; turnoManual = Date.now(); renderTudo(); window.scrollTo({ top: 0 }); }
   else if (d.add) { const p = D.produtos.find(x => x.id === d.add); if (p) abrirItem(p); }
   else if (d.mais) mudarSimples(d.mais, 1);
   else if (d.menos) mudarSimples(d.menos, -1);
   else if (d.prot1) { itemEsc.prot = { [d.prot1]: 1 }; renderEscolhas(); }
   else if (d.protp) { itemEsc.prot[d.protp] = (itemEsc.prot[d.protp] || 0) + 1; renderEscolhas(); }
   else if (d.protm) { itemEsc.prot[d.protm] = Math.max(0, (itemEsc.prot[d.protm] || 0) - 1); renderEscolhas(); }
+  else if (d.acomp !== undefined) { const on = !itemEsc.acomp.has(d.acomp); on ? itemEsc.acomp.add(d.acomp) : itemEsc.acomp.delete(d.acomp); b.setAttribute('aria-pressed', on); }
   else if (d.sabor !== undefined) { itemEsc.sabor = d.sabor; $$('#saborLista .opcao').forEach(x => x.setAttribute('aria-pressed', x.dataset.sabor === d.sabor)); }
   else if (d.tipo) { sel.tipo = d.tipo; $$('#tipos .opcao').forEach(x => x.setAttribute('aria-pressed', x.dataset.tipo === d.tipo)); renderCarrinho(); }
   else if (d.pag) { sel.pag = d.pag; $$('#pags .opcao').forEach(x => x.setAttribute('aria-pressed', x.dataset.pag === d.pag)); renderCarrinho(); }
@@ -863,6 +885,7 @@ $('#barraPedido').onclick = () => {
   if (p && FINAIS.includes(p.status)) { ls.del(K.ped); mostrarBarraPedido(); }
 };
 $('#btnFinalizar').onclick = finalizar;
+$('#cBairroSel').onchange = renderCarrinho;
 $('#btnCupom').onclick = aplicarCupom;
 $('#cTel').addEventListener('input', e => { e.target.value = mascaraTel(e.target.value); checarFidelidade(); });
 $('#btnRepetir').onclick = repetir;
@@ -881,7 +904,12 @@ document.addEventListener('visibilitychange', () => {
   acompanhar();
 });
 setInterval(() => { if (!document.hidden && D) carregar(true); }, 120000);
-setInterval(() => { if (D) renderQuadro(); }, 60000);
+setInterval(() => {
+  if (!D) return;
+  // troca sozinho de almoço para noite (e vice-versa) pelos horários da loja, se o cliente não trocou o turno há pouco
+  if (!carrinho.linhas.length && Date.now() - turnoManual > 10 * 60000) { const t = turnoPadrao(); if (t !== turno) { turno = t; renderTudo(); return; } }
+  renderQuadro();
+}, 60000);
 
 if (!carrinho.linhas || (carrinho.linhas.length && !carrinho.turno) || Date.now() - (carrinho.ts || 0) > 10 * 3600e3) carrinho = { turno: null, linhas: [] };
 carregar();
