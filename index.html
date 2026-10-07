@@ -391,7 +391,8 @@ function aplicar(r) {
   document.title = D.nome + ' | Cardápio';
   $('#nomeLoja').textContent = D.nome;
   $('#slogan').textContent = cfg.slogan || '';
-  if (!turno || !turnoAtivo(cfg, turno)) turno = turnoPadrao();
+  turno = turnoPadrao();   // sempre o turno do horário
+  limparCarrinhoDeOutroTurno();
   renderTudo();
   if (primeira) { abrirArteSeHouver(); mostrarBarraPedido(); acompanhar(); }
 }
@@ -466,7 +467,7 @@ function renderQuadro() {
   $('#heroData').textContent = (d => d.charAt(0).toUpperCase() + d.slice(1))(B.dataExtenso(B.agoraLoja()));
   $('#slogan').textContent = c.slogan || '';
   const ativos = TURNOS.filter(t => turnoAtivo(c, t));
-  $('#turnos').hidden = ativos.length < 2;
+  $('#turnos').hidden = true;   // o turno é sempre automático, pelo horário
   $('#turnos').innerHTML = ativos.map(t => `<button data-turno="${t}" aria-pressed="${t === turno}">${esc(nomeTurno(c, t))}</button>`).join('');
   const tt = c.turnos[turno] || {};
   $('#diaTitulo').textContent = nomeTurno(c, turno) + ' de hoje';
@@ -777,7 +778,7 @@ function repetir() {
     const p = D.produtos.find(x => x.id === l.id);
     const protOk = (l.proteinas || []).every(id => protsDisp(turno).some(x => x.id === id));
     if (!p || motivoIndisp(p) || !doTurno(p, turno) || !protOk) { falta.push(l.nome); return; }
-    if (addLinha(p, { qtd: l.qtd, proteinas: l.proteinas || [], sabor: l.sabor || '', obs: l.obs || '' })) ok++;
+    if (addLinha(p, { qtd: l.qtd, proteinas: l.proteinas || [], sabor: l.sabor || '', obs: l.obs || '', acomp: l.acomp || null, sem: l.sem || [] })) ok++;
   });
   renderRepetir();
   if (falta.length) toast(`Não deu para repetir: ${falta.join(', ')}. Escolha de novo, por favor.`);
@@ -905,7 +906,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') { const m = 
 $('#itemMenos').onclick = () => { itemEsc.qtd = Math.max(1, itemEsc.qtd - 1); renderEscolhas(); };
 $('#itemMais').onclick = () => { itemEsc.qtd = Math.min(20, itemEsc.qtd + 1); renderEscolhas(); };
 $('#btnAddItem').onclick = confirmarItem;
-$('#barra').onclick = () => { if (carrinho.turno && carrinho.turno !== turno) { turno = carrinho.turno; renderTudo(); } abrirCarrinho(); };
+$('#barra').onclick = () => abrirCarrinho();
+function limparCarrinhoDeOutroTurno() { if (carrinho.linhas.length && carrinho.turno && carrinho.turno !== turno) { carrinho = { turno: null, linhas: [] }; salvarCarrinho(); } }
 $('#barraPedido').onclick = () => {
   const p = meuPedido(); abrirPedido(false);
   if (p && FINAIS.includes(p.status)) { ls.del(K.ped); mostrarBarraPedido(); }
@@ -957,7 +959,7 @@ setInterval(() => { if (!document.hidden && D) carregar(true); }, 120000);
 setInterval(() => {
   if (!D) return;
   // troca sozinho de almoço para noite (e vice-versa) pelos horários da loja, se o cliente não trocou o turno há pouco
-  if (!carrinho.linhas.length && Date.now() - turnoManual > 10 * 60000) { const t = turnoPadrao(); if (t !== turno) { turno = t; renderTudo(); return; } }
+  { const t = turnoPadrao(); if (t !== turno) { turno = t; limparCarrinhoDeOutroTurno(); renderTudo(); atualizarBarra(); return; } }   // troca sozinho pelo horário
   renderQuadro();
 }, 60000);
 
