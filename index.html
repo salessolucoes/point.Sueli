@@ -265,8 +265,8 @@ label.campo{display:block;margin-top:12px;font-size:13px;font-weight:600;color:v
   <div class="folha" role="dialog" aria-modal="true" aria-labelledby="itemNome">
     <div class="folha-topo"><div><h2 id="itemNome"></h2><p class="sub" id="itemDesc"></p></div><button class="fechar" data-fechar aria-label="Fechar">×</button></div>
     <div class="bloco" id="blocoProt" hidden><h3><span id="protTitulo">Escolha a proteína</span><small id="protConta"></small></h3><div class="escolhas" id="protLista"></div></div>
-    <div class="bloco" id="blocoAcomp" hidden><h3>Acompanhamentos</h3><p class="sub" style="margin:-4px 0 8px">Toque para tirar o que não quiser.</p><div class="opcoes" id="acompLista"></div></div>
-    <div class="bloco" id="blocoSabor" hidden><h3>Sabor</h3><div class="opcoes" id="saborLista"></div></div>
+    <div class="bloco" id="blocoAcomp" hidden><h3>Acompanhamentos</h3><p class="sub" style="margin:-4px 0 8px">Toque para marcar os que você quer.</p><div class="opcoes" id="acompLista"></div></div>
+    <div class="bloco" id="blocoSabor" hidden><h3 id="saborTitulo">Sabor</h3><div class="opcoes" id="saborLista"></div></div>
     <label class="campo">Alguma observação? <input id="itemObs" maxlength="120" placeholder="Ex.: sem feijão, mais arroz"></label>
     <div class="rodape-folha" style="display:flex;gap:12px;align-items:center">
       <div class="qtd"><button id="itemMenos" aria-label="Diminuir">−</button><span id="itemQtd">1</span><button id="itemMais" aria-label="Aumentar">+</button></div>
@@ -297,7 +297,7 @@ label.campo{display:block;margin-top:12px;font-size:13px;font-weight:600;color:v
 
     <div class="bloco"><h3>Seus dados</h3>
       <label class="campo">Nome <input id="cNome" maxlength="60" autocomplete="name"></label>
-      <label class="campo">WhatsApp <input id="cTel" inputmode="tel" autocomplete="tel" maxlength="16" placeholder="(85) 99999-9999"></label>
+      <label class="campo"><span id="telRot">WhatsApp</span> <input id="cTel" inputmode="tel" autocomplete="tel" maxlength="16" placeholder="(85) 99999-9999"></label>
       <p class="nota" id="fidNota" hidden></p>
     </div>
 
@@ -451,6 +451,7 @@ function renderTudo() { renderQuadro(); renderMenu(); renderRepetir(); atualizar
 
 function acompDo(t) { const a = cfg().acompanhamentos || {}; return String(a[t] || '').trim(); }
 function listaAcomp(t) { return acompDo(t).split(/,|;|\s+e\s+/i).map(x => x.trim()).filter(Boolean); }
+function telOpcional() { return sel.tipo === 'local' && !cfg().tel_local; }
 function bairrosLista() { const e = cfg().entrega || {}; return Array.isArray(e.bairros) ? e.bairros.filter(b => b && b.nome) : []; }
 function bairroAtual() { return bairrosLista().length ? $('#cBairroSel').value : $('#cBairro').value.trim(); }
 function taxaEntrega() {
@@ -479,7 +480,7 @@ function renderQuadro() {
   $('#acomp').hidden = !ac; $('#acomp').innerHTML = `<b>Acompanha:</b> ${esc(ac)}`;
   $('#precosDia').innerHTML = destaquesDo(turno).map(p => `<button class="preco-dia" data-add="${p.id}">
     ${p.foto ? `<img src="${esc(p.foto)}" alt="" loading="lazy" onerror="this.remove()">` : ''}
-    <span>${esc(p.nome)}<b>${brl(p.preco)}</b>${p.qtd_proteinas ? `<small>${p.qtd_proteinas === 1 ? '1 proteína' : p.qtd_proteinas + ' proteínas'}</small>` : ''}</span></button>`).join('');
+    <span>${esc(p.nome)}<b>${brl(p.preco)}</b>${p.qtd_proteinas ? `<small>${p.qtd_proteinas === 1 ? '1 proteína' : 'até ' + p.qtd_proteinas + ' proteínas'}</small>` : ''}</span></button>`).join('');
   $('#btnVerArte').hidden = !protsDisp(turno).length;
   $('#btnIrMenu').hidden = !podePedir(turno);
   const av = $('#avisoTurno');
@@ -497,7 +498,8 @@ function renderQuadro() {
 function categorias() {
   const ordem = cfg().categorias || [];
   const cats = [...new Set(D.produtos.filter(p => doTurno(p, turno)).map(p => p.categoria))];
-  return cats.sort((a, b) => (ordem.indexOf(a) + 1 || 999) - (ordem.indexOf(b) + 1 || 999));
+  const r = c => ordem.indexOf(c) + 1 || (c === 'Combos' ? 0 : 999);   // combos vêm primeiro se o dono não definiu a ordem
+  return cats.sort((a, b) => r(a) - r(b));
 }
 const idCat = c => 'cat-' + norm(c).replace(/[^a-z0-9]+/g, '-');
 function qtdNoCarrinho(id) { return carrinho.turno === turno ? carrinho.linhas.filter(l => l.id === id).reduce((s, l) => s + l.qtd, 0) : 0; }
@@ -565,11 +567,11 @@ function addLinha(p, { qtd = 1, proteinas = [], sabor = '', obs = '', acomp = nu
     if (r <= 0) { toast('Esgotou por hoje.'); return false; }
     if (qtd > r) { toast(r === 1 ? 'Só resta 1 para hoje.' : `Só restam ${r} para hoje.`); return false; }
   }
-  const chave = [p.id, proteinas.slice().sort().join(','), sabor, obs, sem.join(',')].join('|');
+  const chave = [p.id, proteinas.slice().sort().join(','), sabor, obs, (acomp || []).join(',')].join('|');
   const ex = carrinho.linhas.find(l => l.k === chave);
   if (ex) ex.qtd += qtd;
   else carrinho.linhas.push({ k: chave, id: p.id, nome: p.nome, preco: Number(p.preco), qtd, proteinas,
-    protNomes: proteinas.map(id => (D.proteinas.find(x => x.id === id) || {}).nome || ''), sabor, obs, acomp, sem, lim: !!p.conta_limite });
+    protNomes: proteinas.map(id => (D.proteinas.find(x => x.id === id) || {}).nome || ''), sabor, saborTit: p.opcao_titulo || '', obs, acomp, sem, lim: !!p.conta_limite });
   salvarCarrinho(); renderMenu(); atualizarBarra(); return true;
 }
 function mudarSimples(id, d) {
@@ -585,14 +587,15 @@ function abrirItem(p) {
   if (!podePedir(turno)) return;
   if (!p.qtd_proteinas && !(p.sabores && p.sabores.length)) { if (addLinha(p)) toast(p.nome + ' adicionado'); return; }
   const acs = p.qtd_proteinas && cfg().escolher_acomp !== false ? listaAcomp(turno) : [];
-  itemAberto = p; itemEsc = { prot: {}, sabor: '', qtd: 1, acs, acomp: new Set(acs) };
+  itemAberto = p; itemEsc = { prot: {}, sabor: '', qtd: 1, acs, acomp: new Set() };
   $('#blocoAcomp').hidden = !acs.length;
-  $('#acompLista').innerHTML = acs.map(a => `<button class="opcao" data-acomp="${esc(a)}" aria-pressed="true">${esc(a.charAt(0).toUpperCase() + a.slice(1))}</button>`).join('');
+  $('#acompLista').innerHTML = acs.map(a => `<button class="opcao" data-acomp="${esc(a)}" aria-pressed="false">${esc(a.charAt(0).toUpperCase() + a.slice(1))}</button>`).join('');
   $('#itemNome').textContent = p.nome;
   $('#itemDesc').textContent = [p.descricao, p.qtd_proteinas && acompDo(turno) ? 'Acompanha: ' + acompDo(turno) : '', brl(p.preco)].filter(Boolean).join('. ');
   $('#blocoProt').hidden = !p.qtd_proteinas;
-  $('#protTitulo').textContent = p.qtd_proteinas === 1 ? 'Escolha a proteína' : `Escolha ${p.qtd_proteinas} proteínas`;
+  $('#protTitulo').textContent = p.qtd_proteinas === 1 ? 'Escolha a proteína' : `Escolha até ${p.qtd_proteinas} proteínas`;
   $('#blocoSabor').hidden = !(p.sabores && p.sabores.length);
+  $('#saborTitulo').textContent = p.opcao_titulo || 'Sabor';
   $('#saborLista').innerHTML = (p.sabores || []).map(s => `<button class="opcao" data-sabor="${esc(s)}" aria-pressed="false">${esc(s)}</button>`).join('');
   $('#itemObs').value = ''; $('#itemErro').textContent = '';
   renderEscolhas(); abrir('#mItem');
@@ -601,7 +604,7 @@ function renderEscolhas() {
   const p = itemAberto, n = p.qtd_proteinas, tot = Object.values(itemEsc.prot).reduce((a, b) => a + b, 0);
   if (n) {
     $('#protConta').textContent = `${tot} de ${n}`;
-    $('#protConta').classList.toggle('ok', tot === n);
+    $('#protConta').classList.toggle('ok', tot >= 1);
     $('#protLista').innerHTML = protsDoTurno(turno).map(x => {
       const q = itemEsc.prot[x.id] || 0;
       if (x.esgotado) return `<div class="escolha off"><span class="nome">${esc(x.nome)}</span><span class="sub">acabou</span></div>`;
@@ -613,11 +616,16 @@ function renderEscolhas() {
   $('#itemQtd').textContent = itemEsc.qtd;
   $('#btnAddItem').textContent = `Adicionar ${brl(p.preco * itemEsc.qtd)}`;
 }
+// escolheu todas as proteínas: desce sozinho para os acompanhamentos
+function irParaAcomp() {
+  const n = itemAberto.qtd_proteinas, tot = Object.values(itemEsc.prot).reduce((a, b) => a + b, 0);
+  if (n && tot === n && !$('#blocoAcomp').hidden) setTimeout(() => $('#blocoAcomp').scrollIntoView({ behavior: 'smooth', block: 'center' }), 120);
+}
 function confirmarItem() {
   const p = itemAberto, n = p.qtd_proteinas;
   const prots = []; Object.entries(itemEsc.prot).forEach(([id, q]) => { for (let i = 0; i < q; i++) prots.push(id); });
-  if (n && prots.length !== n) { $('#itemErro').textContent = n === 1 ? 'Escolha a proteína.' : `Escolha ${n} proteínas.`; return; }
-  if (p.sabores && p.sabores.length && !itemEsc.sabor) { $('#itemErro').textContent = 'Escolha o sabor.'; return; }
+  if (n && (prots.length < 1 || prots.length > n)) { $('#itemErro').textContent = n === 1 ? 'Escolha a proteína.' : `Escolha de 1 a ${n} proteínas.`; return; }
+  if (p.sabores && p.sabores.length && !itemEsc.sabor) { $('#itemErro').textContent = 'Escolha ' + (p.opcao_titulo ? p.opcao_titulo.toLowerCase() : 'o sabor') + '.'; return; }
   const acomp = itemEsc.acs.length ? itemEsc.acs.filter(a => itemEsc.acomp.has(a)) : null;
   const sem = itemEsc.acs.filter(a => !itemEsc.acomp.has(a));
   if (addLinha(p, { qtd: itemEsc.qtd, proteinas: prots, sabor: itemEsc.sabor, obs: $('#itemObs').value.trim(), acomp, sem })) {
@@ -675,11 +683,12 @@ function renderCarrinho() {
   if (!carrinho.linhas.length) { fechar($('#mCarrinho')); return; }
   $('#carLinhas').innerHTML = carrinho.linhas.map((l, i) => `
     <div class="linha-car"><div class="c"><strong>${esc(l.nome)}</strong>
-      ${[l.protNomes.join(' + '), l.sem && l.sem.length ? (l.acomp && !l.acomp.length ? 'Sem acompanhamentos' : 'Sem ' + l.sem.join(', ').toLowerCase()) : '', l.sabor, l.obs && ('Obs.: ' + l.obs)].filter(Boolean).map(t => `<small>${esc(t)}</small>`).join('')}</div>
+      ${[l.protNomes.join(' + '), Array.isArray(l.acomp) ? (l.acomp.length ? 'Com ' + l.acomp.join(', ').toLowerCase() : 'Sem acompanhamentos') : '', l.sabor && ((l.saborTit ? l.saborTit + ': ' : '') + l.sabor), l.obs && ('Obs.: ' + l.obs)].filter(Boolean).map(t => `<small>${esc(t)}</small>`).join('')}</div>
       <div class="qtd"><button data-lmenos="${i}" aria-label="Diminuir">−</button><span>${l.qtd}</span><button data-lmais="${i}" aria-label="Aumentar">+</button></div>
       <span class="v">${brl(l.preco * l.qtd)}</span></div>`).join('') +
     `<button class="btn btn-l" style="margin-top:12px" data-fechar>Adicionar mais itens</button>`;
   $('#boxEndereco').hidden = sel.tipo !== 'entrega';
+  $('#telRot').textContent = telOpcional() ? (c.fidelidade && c.fidelidade.ativo ? 'WhatsApp (opcional, para juntar pontos de fidelidade)' : 'WhatsApp (opcional)') : 'WhatsApp';
   $('#boxTroco').hidden = sel.pag !== 'Dinheiro';
   $('#pagDica').textContent = { Pix: 'A chave Pix aparece quando você finalizar.', Dinheiro: 'Pague na entrega ou retirada.', 'Cartão': 'Débito ou crédito na maquininha, na entrega ou retirada.' }[sel.pag] || '';
   const { sub, taxa, dCupom, dFid, total } = contas();
@@ -695,7 +704,7 @@ function contas() {
   const taxa = sel.tipo === 'entrega' ? taxaEntrega() : 0;
   let dCupom = 0, dFid = 0;
   if (cupom && c.cupons && sub >= cupom.minimo) dCupom = cupom.tipo === 'pct' ? Math.round(sub * cupom.valor) / 100 : Number(cupom.valor);
-  if (fid && fid.ativo && fid.feitos >= fid.a_cada) dFid = Number(fid.desconto) || 0;
+  if (fid && fid.ativo && fid.feitos >= fid.a_cada) dFid = fid.tipo_premio === 'pct' ? Math.round(sub * fid.desconto) / 100 : Number(fid.desconto) || 0;
   const d = Math.min(sub, dCupom + dFid);
   return { sub, taxa, dCupom: Math.min(dCupom, sub), dFid: Math.max(0, d - Math.min(dCupom, sub)), total: sub + taxa - d };
 }
@@ -711,8 +720,11 @@ function checarFidelidade() {
       nota.hidden = false;
       const falta = fid.a_cada - fid.feitos;
       nota.className = 'nota' + (falta <= 0 ? ' ok' : '');
-      nota.textContent = falta <= 0 ? `Você ganhou ${brl(fid.desconto)} de desconto neste pedido. Obrigado pela preferência!`
-        : `Programa de fidelidade: ${fid.feitos} de ${fid.a_cada} pedidos. Faltam ${falta} para ganhar ${brl(fid.desconto)} de desconto.`;
+      const premio = fid.tipo_premio === 'pct' ? fid.desconto + '% de desconto' : brl(fid.desconto) + ' de desconto';
+      const un = { pedidos: ['pedido', 'pedidos'], itens: ['marmita/pratinho', 'marmitas/pratinhos'], valor: ['ponto', 'pontos'] }[fid.modo] || ['pedido', 'pedidos'];
+      const regra = fid.modo === 'valor' ? ` (1 ponto a cada ${brl(fid.valor_ponto)} em compras)` : '';
+      nota.textContent = falta <= 0 ? `Você ganhou ${premio} neste pedido. Obrigado pela preferência!`
+        : `Fidelidade: você tem ${fid.feitos} de ${fid.a_cada} ${un[1]}${regra}. Faltam ${falta} para ganhar ${premio}.`;
       renderCarrinho();
     } catch (e) {}
   }, 500);
@@ -737,7 +749,7 @@ async function finalizar() {
   if (sel.tipo === 'entrega' && bairroAtual().length < 2) { (bairrosLista().length ? $('#cBairroSel') : $('#cBairro')).focus(); return erro(bairrosLista().length ? 'Escolha o bairro da entrega.' : 'Informe o bairro.'); }
   if (sel.quando === 'agendar' && !$('#cHorario').value) return erro('Não há horários disponíveis para hoje.');
   if (nome.length < 2) { $('#cNome').focus(); return erro('Informe seu nome.'); }
-  if (tel.length < 10) { $('#cTel').focus(); return erro('Informe seu WhatsApp com DDD.'); }
+  if (!telOpcional() ? tel.length < 10 : tel.length > 0 && tel.length < 10) { $('#cTel').focus(); return erro('Informe seu WhatsApp com DDD.'); }
   if (!sel.pag) return erro('Escolha a forma de pagamento.');
   const { total } = contas();
   const troco = sel.pag === 'Dinheiro' ? numBR($('#cTroco').value) : 0;
@@ -751,7 +763,7 @@ async function finalizar() {
       itens: carrinho.linhas.map(l => ({ id: l.id, qtd: l.qtd, proteinas: l.proteinas, sabor: l.sabor, obs: l.obs, acomp: l.acomp || undefined }))
     } });
     if (!r.ok) throw new Error(r.erro);
-    ls.set(K.cli, { nome, telefone: tel, endereco: $('#cEnd').value.trim(), bairro: bairroAtual(), comp: $('#cComp').value.trim(), ref: $('#cRef').value.trim(), tipo: sel.tipo });
+    ls.set(K.cli, { nome, telefone: tel || (ls.get(K.cli, {}).telefone || ''), endereco: $('#cEnd').value.trim(), bairro: bairroAtual(), comp: $('#cComp').value.trim(), ref: $('#cRef').value.trim(), tipo: sel.tipo });
     ls.set(K.ult, { linhas: carrinho.linhas, turno: carrinho.turno, ts: Date.now() });
     ls.set(K.ped, { id: r.id, codigo: r.codigo, numero: r.numero, total: r.total, pagamento: sel.pag, tipo: sel.tipo, status: 'Novo', ts: Date.now() });
     carrinho = { turno: null, linhas: [] }; salvarCarrinho();
@@ -884,8 +896,8 @@ document.addEventListener('click', e => {
   else if (d.add) { const p = D.produtos.find(x => x.id === d.add); if (p) abrirItem(p); }
   else if (d.mais) mudarSimples(d.mais, 1);
   else if (d.menos) mudarSimples(d.menos, -1);
-  else if (d.prot1) { itemEsc.prot = { [d.prot1]: 1 }; renderEscolhas(); }
-  else if (d.protp) { itemEsc.prot[d.protp] = (itemEsc.prot[d.protp] || 0) + 1; renderEscolhas(); }
+  else if (d.prot1) { itemEsc.prot = { [d.prot1]: 1 }; renderEscolhas(); irParaAcomp(); }
+  else if (d.protp) { itemEsc.prot[d.protp] = (itemEsc.prot[d.protp] || 0) + 1; renderEscolhas(); irParaAcomp(); }
   else if (d.protm) { itemEsc.prot[d.protm] = Math.max(0, (itemEsc.prot[d.protm] || 0) - 1); renderEscolhas(); }
   else if (d.acomp !== undefined) { const on = !itemEsc.acomp.has(d.acomp); on ? itemEsc.acomp.add(d.acomp) : itemEsc.acomp.delete(d.acomp); b.setAttribute('aria-pressed', on); }
   else if (d.sabor !== undefined) { itemEsc.sabor = d.sabor; $$('#saborLista .opcao').forEach(x => x.setAttribute('aria-pressed', x.dataset.sabor === d.sabor)); }

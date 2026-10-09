@@ -178,6 +178,7 @@ label.rot .campo{display:block;width:100%;margin-top:6px}
 .prot{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px dashed var(--linha)}
 .prot:last-child{border-bottom:0}
 .prot .nome{flex:1;min-width:0;font-weight:600}
+@media(max-width:560px){.prot.cad{flex-wrap:wrap}.prot.cad .nome{flex-basis:100%}}
 .prot.acabou .nome{text-decoration:line-through;color:var(--cinza-2)}
 .add-linha{display:flex;gap:8px;margin-top:12px}
 .add-linha .campo{flex:1}
@@ -354,6 +355,7 @@ table.tab{width:100%;border-collapse:collapse;font-size:13.5px}
       <div class="barra-ferr">
         <input class="campo" id="buscaProd" type="search" placeholder="Buscar produto" style="flex:1;max-width:340px" aria-label="Buscar produto">
         <span class="esp"></span>
+        <button class="btn btn-l" id="btnNovoCombo">Novo combo</button>
         <button class="btn btn-p" id="btnNovoProd">Novo produto</button>
       </div>
       <div id="listaProd"></div>
@@ -361,6 +363,16 @@ table.tab{width:100%;border-collapse:collapse;font-size:13.5px}
 
     <!-- FINANCEIRO -->
     <section class="view" data-view="financeiro" hidden>
+      <div class="cartao" id="finTrava" hidden style="max-width:440px;margin:24px auto;text-align:center">
+        <h2 id="travaTit">Área do dono</h2>
+        <p id="travaTxt" style="color:var(--cinza);font-size:13.5px;margin:6px 0 14px">Faturamento e despesas só abrem com a senha do dono.</p>
+        <form id="formDono" style="display:grid;gap:10px">
+          <input class="campo" id="donoSenha" type="password" inputmode="numeric" maxlength="20" autocomplete="off" placeholder="Senha do dono" aria-label="Senha do dono" required>
+          <input class="campo" id="donoRep" type="password" inputmode="numeric" maxlength="20" autocomplete="off" placeholder="Repita a senha" aria-label="Repita a senha" hidden>
+          <button class="btn btn-p" id="btnDono">Abrir</button>
+        </form>
+      </div>
+      <div id="finConteudo">
       <div class="barra-ferr">
         <div class="seg" id="periodos">
           <button data-per="hoje">Hoje</button><button data-per="ontem">Ontem</button><button data-per="7">7 dias</button>
@@ -372,6 +384,7 @@ table.tab{width:100%;border-collapse:collapse;font-size:13.5px}
         </span>
         <span class="esp"></span>
         <button class="btn btn-l btn-pq" id="btnCSV">Baixar planilha</button>
+        <button class="btn btn-l btn-pq" id="btnTravarFin" title="Fechar a área do dono">Bloquear</button>
       </div>
       <div class="kpis" id="kpis"></div>
       <div class="fin-grade">
@@ -393,6 +406,7 @@ table.tab{width:100%;border-collapse:collapse;font-size:13.5px}
           <label class="rot" style="margin:0">Valor<input class="campo" id="dValor" inputmode="decimal" placeholder="0,00" required></label>
           <button class="btn btn-s">Adicionar</button>
         </form>
+      </div>
       </div>
     </section>
 
@@ -446,8 +460,13 @@ table.tab{width:100%;border-collapse:collapse;font-size:13.5px}
     <div class="rot">Aparece em</div>
     <div style="display:flex;gap:18px"><label class="chk"><input type="checkbox" id="pAlmoco"> Almoço</label><label class="chk"><input type="checkbox" id="pNoite"> Noite</label></div>
     <div class="duas">
-      <label class="rot">Cliente escolhe proteínas?<select class="campo" id="pProt"><option value="0">Não</option><option value="1">Sim, 1 proteína</option><option value="2">Sim, 2 proteínas</option><option value="3">Sim, 3 proteínas</option></select></label>
-      <label class="rot">Sabores (separe por vírgula)<input class="campo" id="pSabores" placeholder="Ex.: Ninho, Morango"></label>
+      <label class="rot">Cliente escolhe proteínas?<select class="campo" id="pProt"><option value="0">Não</option><option value="1">Sim, 1 proteína</option><option value="2">Sim, até 2 proteínas</option><option value="3">Sim, até 3 proteínas</option><option value="4">Sim, até 4 proteínas</option><option value="5">Sim, até 5 proteínas</option></select></label>
+      <span></span>
+    </div>
+    <div class="rot" style="margin-top:14px">O cliente escolhe uma opção? <small style="font-weight:500;color:var(--cinza)">(sabor do suco, refri do combo… deixe vazio se não tiver)</small></div>
+    <div class="duas">
+      <label class="rot" style="margin-top:4px">Nome da escolha<input class="campo" id="pOpTit" maxlength="30" placeholder="Ex.: Sabor, Bebida"></label>
+      <label class="rot" style="margin-top:4px">Opções (separe por vírgula)<input class="campo" id="pSabores" placeholder="Ex.: Coca-Cola Lata, Guaraná Lata"></label>
     </div>
     <label class="chk"><input type="checkbox" id="pLimite"> Conta no limite diário de marmitas</label>
     <label class="chk"><input type="checkbox" id="pDestaque"> Mostrar o preço na arte do dia</label>
@@ -531,7 +550,7 @@ async function chamar(fn, args, okMsg) {
   } catch (e) { if (e.message !== 'sem sessão') toast('Sem conexão. Tente de novo.', 'erro'); return null; }
 }
 function sairPainel(msg) {
-  sess = null; SS.del(); clearTimeout(timerSync);
+  sess = null; dono = null; SS.del(); clearTimeout(timerSync);
   $('#app').hidden = true; $('#login').hidden = false;
   $('#loginCampos').hidden = false; $('#loginAbrindo').hidden = true;
   $('#loginErro').textContent = msg || ''; $('#senha').value = ''; setTimeout(() => $('#senha').focus(), 50);
@@ -581,7 +600,7 @@ function irPara(v) {
   $$('.nav a').forEach(a => a.classList.toggle('ativo', a.dataset.ir === v));
   $('#tituloView').textContent = TITULOS[v];
   if (location.hash.slice(1) !== v) history.replaceState(null, '', '#' + v);
-  ({ pedidos: renderPedidos, hoje: renderHoje, produtos: renderProdutos, financeiro: () => carregarFin(), divulgar: renderDivulgar, ajustes: renderAjustes })[v]();
+  ({ pedidos: renderPedidos, hoje: renderHoje, produtos: renderProdutos, financeiro: () => abrirFin(), divulgar: renderDivulgar, ajustes: renderAjustes })[v]();
   window.scrollTo({ top: 0 });
 }
 window.addEventListener('hashchange', () => { if (!$('#app').hidden) irPara(location.hash.slice(1)); });
@@ -692,7 +711,7 @@ function renderPedidos() {
   const abertos = lista.filter(p => !['Entregue', 'Cancelado'].includes(p.status)).length;
   const ehHoje = diaVisto === D.hoje;
   $('#resumoDia').innerHTML = `<div><b>${validos.length}</b><span>${validos.length === 1 ? 'pedido' : 'pedidos'} ${ehHoje ? 'hoje' : 'no dia'}</span></div>
-    <div><b>${brl(fat)}</b><span>vendido ${ehHoje ? 'hoje' : 'no dia'}</span></div><div><b>${abertos}</b><span>em andamento</span></div>`;
+    <div><b>${dono ? brl(fat) : 'R$ •••'}</b><span>${dono ? 'vendido ' + (ehHoje ? 'hoje' : 'no dia') : 'valor: só o dono vê'}</span></div><div><b>${abertos}</b><span>em andamento</span></div>`;
   const porCol = COLS.map(c => ({ ...c, itens: lista.filter(p => c.st.includes(p.status)) }));
   porCol.forEach(c => { if (c.id === 'fim') c.itens.reverse(); });
   $('#colTabs').innerHTML = porCol.map(c => `<button data-col="${c.id}" aria-pressed="${c.id === colMobile}">${c.id === 'preparo' ? 'Preparo' : c.id === 'fim' ? 'Feitos' : c.nome} ${c.itens.length}</button>`).join('');
@@ -747,28 +766,48 @@ $('#btnHoje').onclick = async () => { diaVisto = D.hoje; $('#diaPedidos').value 
 /* ================= HOJE (proteínas) ================= */
 function renderHoje() {
   const c = D.config, lim = c.limite || {};
-  const prots = D.proteinas;
+  const prots = D.proteinas, doTurnoP = t => prots.filter(p => (p.turnos || ['almoco', 'noite']).includes(t));
+  const atual = B.turnoEm(c, B.minutosAgora());
   $('#gradeTurnos').innerHTML = TURNOS.filter(t => turnoAtivo(c, t)).map(t => {
-    const vend = (D.vendidos || {})[t] || 0, marcadas = prots.filter(p => p[t]).length;
-    return `<div class="cartao"><h2>${esc(nomeTurno(c, t))} <small>${marcadas} de ${prots.length} marcadas</small></h2>
-      <div class="acomp-box"><label class="rot">Acompanhamentos de hoje <small style="color:var(--cinza);font-weight:500">(aparece no cardápio e na arte)</small></label>
-        <div class="lin"><input class="campo" data-acomp="${t}" maxlength="140" value="${esc(((c.acompanhamentos || {})[t]) || '')}" placeholder="Separe por vírgula: arroz, feijão, macarrão, salada, farofa"><button class="btn btn-s btn-pq" data-salvaracomp="${t}">Salvar</button></div></div>
+    const lista = doTurnoP(t), vend = (D.vendidos || {})[t] || 0, marcadas = lista.filter(p => p[t]).length;
+    return `<div class="cartao"><h2>${esc(nomeTurno(c, t))} <small>${marcadas} de ${lista.length} marcadas</small></h2>
+      <div class="acomp-box"><label class="rot">Acompanhamentos de hoje <small style="color:var(--cinza);font-weight:500">(o cliente marca os que quer)</small></label>
+        <div class="lin"><input class="campo" data-acomp="${t}" maxlength="140" value="${esc(((c.acompanhamentos || {})[t]) || '')}" placeholder="Separe por vírgula: arroz, feijão, macarrão, salada, farofa"><button class="btn btn-s btn-pq" data-salvaracomp="${t}">Salvar</button></div>
+        ${((c.acompanhamentos || {})[t] || '').trim() ? '' : `<p style="font-size:12.5px;color:var(--brasa);margin-top:6px;font-weight:600">Vazio: no ${esc(nomeTurno(c, t).toLowerCase())} o cliente não vê a escolha de acompanhamentos.</p>`}</div>
       <p class="limite-info">${lim.ativo ? `Marmitas e pratinhos: <b>${vend} vendidos de ${lim[t]}</b>` : `Marmitas e pratinhos vendidos hoje: <b>${vend}</b>`}</p>
-      <div style="display:flex;gap:8px;margin-bottom:6px"><button class="btn btn-l btn-pq" data-todas="${t}" data-v="1">Marcar todas</button><button class="btn btn-l btn-pq" data-todas="${t}" data-v="0">Desmarcar todas</button></div>
-      ${prots.length ? prots.map(p => `<div class="prot ${p.esgotado ? 'acabou' : ''}">
+      ${lista.length ? `<div style="display:flex;gap:8px;margin-bottom:6px"><button class="btn btn-l btn-pq" data-todas="${t}" data-v="1">Marcar todas</button><button class="btn btn-l btn-pq" data-todas="${t}" data-v="0">Desmarcar todas</button></div>` : ''}
+      ${lista.length ? lista.map(p => `<div class="prot ${p.esgotado ? 'acabou' : ''}">
         <label class="sw" title="Tem hoje no ${esc(nomeTurno(c, t).toLowerCase())}"><input type="checkbox" data-pflag="${p.id}" data-campo="${t}" ${p[t] ? 'checked' : ''} aria-label="${esc(p.nome)} no ${esc(nomeTurno(c, t))}"><span></span></label>
         <span class="nome">${esc(p.nome)}</span>
         <button class="btn btn-pq ${p.esgotado ? 'btn-s' : 'btn-l'}" data-pflag="${p.id}" data-campo="esgotado" data-v="${p.esgotado ? 0 : 1}">${p.esgotado ? 'Voltou' : 'Acabou'}</button>
-      </div>`).join('') : '<p class="vazio">Nenhuma proteína cadastrada.</p>'}
+        <button class="btn btn-l btn-pq" data-tirarturno="${p.id}" data-t="${t}" title="Tirar do ${esc(nomeTurno(c, t).toLowerCase())}" aria-label="Tirar ${esc(p.nome)} do ${esc(nomeTurno(c, t).toLowerCase())}">×</button>
+      </div>`).join('') : `<p class="vazio">Nenhuma proteína no ${esc(nomeTurno(c, t).toLowerCase())}. Cadastre abaixo.</p>`}
     </div>`;
   }).join('') + `<div class="cartao"><h2>Proteínas cadastradas</h2>
-    ${prots.map(p => `<div class="prot"><span class="nome">${esc(p.nome)}</span><button class="btn btn-l btn-pq" data-renomear="${p.id}">Renomear</button><button class="btn btn-perigo btn-pq" data-delprot="${p.id}">Excluir</button></div>`).join('')}
-    <form class="add-linha" id="formProt"><input class="campo" id="novaProt" maxlength="60" placeholder="Nova proteína, ex.: Bife acebolado" aria-label="Nova proteína"><button class="btn btn-s">Adicionar</button></form></div>`;
+    <p style="font-size:12.5px;color:var(--cinza);margin-bottom:6px">Toque em Almoço ou Noite para dizer onde cada proteína aparece.</p>
+    ${prots.map(p => `<div class="prot cad"><span class="nome">${esc(p.nome)}</span>
+      <span class="mm-chips" style="margin:0">${TURNOS.map(t => `<button data-memb="${p.id}" data-t="${t}" aria-pressed="${(p.turnos || []).includes(t)}">${esc(nomeTurno(c, t))}</button>`).join('')}</span>
+      <button class="btn btn-l btn-pq" data-renomear="${p.id}">Renomear</button><button class="btn btn-perigo btn-pq" data-delprot="${p.id}">Excluir</button></div>`).join('')}
+    <form class="add-linha" id="formProt" style="flex-wrap:wrap"><input class="campo" id="novaProt" maxlength="60" placeholder="Nova proteína, ex.: Bife acebolado" aria-label="Nova proteína" style="flex:1;min-width:180px">
+      <label class="chk" style="margin:0"><input type="checkbox" id="npAlmoco" ${atual !== 'noite' ? 'checked' : ''}> Almoço</label>
+      <label class="chk" style="margin:0"><input type="checkbox" id="npNoite" ${atual === 'noite' ? 'checked' : ''}> Noite</label>
+      <button class="btn btn-s">Adicionar</button></form></div>`;
   $('#formProt').onsubmit = async e => {
     e.preventDefault(); const nome = $('#novaProt').value.trim(); if (!nome) return;
-    const r = await chamar('admin_proteina', { p_loja: L, p: { nome, almoco: true, noite: true, ordem: D.proteinas.length + 1 } }, 'Proteína adicionada');
+    const turnos = [$('#npAlmoco').checked && 'almoco', $('#npNoite').checked && 'noite'].filter(Boolean);
+    if (!turnos.length) return toast('Marque Almoço, Noite ou os dois.', 'erro');
+    const r = await chamar('admin_proteina', { p_loja: L, p: { nome, turnos, almoco: true, noite: true, ordem: D.proteinas.length + 1 } }, 'Proteína adicionada');
     if (r) { D.proteinas.push(r.item); renderHoje(); setTimeout(() => $('#novaProt').focus(), 0); }
   };
+}
+async function mudarTurnosProteina(id, t, incluir) {
+  const p = D.proteinas.find(x => x.id === id); if (!p) return;
+  const turnos = new Set(p.turnos || ['almoco', 'noite']);
+  incluir ? turnos.add(t) : turnos.delete(t);
+  if (!turnos.size) return toast('A proteína precisa ficar em pelo menos um turno. Para tirar de vez, use Excluir.', 'erro');
+  const novo = { ...p, turnos: [...turnos], [t]: incluir ? true : false };
+  const r = await chamar('admin_proteina', { p_loja: L, p: novo }, incluir ? `Agora aparece no ${nomeTurno(D.config, t).toLowerCase()}` : `Tirada do ${nomeTurno(D.config, t).toLowerCase()}`);
+  if (r) { Object.assign(p, r.item); renderHoje(); }
 }
 async function flagProteina(id, campo, v) {
   const p = D.proteinas.find(x => x.id === id); if (!p) return;
@@ -777,7 +816,7 @@ async function flagProteina(id, campo, v) {
   if (!r) { p[campo] = antes; renderHoje(); }
 }
 async function marcarTodas(t, v) {
-  const alvo = D.proteinas.filter(p => !!p[t] !== v);
+  const alvo = D.proteinas.filter(p => (p.turnos || ['almoco', 'noite']).includes(t) && !!p[t] !== v);
   alvo.forEach(p => p[t] = v); renderHoje();
   if (alvo.length) await chamar('admin_flags', { p_lista: alvo.map(p => ({ tipo: 'proteina', id: p.id, campo: t, valor: v })) });
 }
@@ -793,7 +832,8 @@ $('#btnNovoDia').onclick = async () => {
 /* ================= PRODUTOS ================= */
 function ordemCats() {
   const ordem = D.config.categorias || [];
-  return [...new Set(D.produtos.map(p => p.categoria))].sort((a, b) => (ordem.indexOf(a) + 1 || 999) - (ordem.indexOf(b) + 1 || 999));
+  const r = c => ordem.indexOf(c) + 1 || (c === 'Combos' ? 0 : 999);
+  return [...new Set(D.produtos.map(p => p.categoria))].sort((a, b) => r(a) - r(b));
 }
 function textoTurnos(p) { return !p.turnos || !p.turnos.length || p.turnos.length === 2 ? 'Almoço e noite' : p.turnos.map(t => nomeTurno(D.config, t)).join(' e '); }
 function renderProdutos() {
@@ -803,7 +843,7 @@ function renderProdutos() {
     if (!ps.length) return '';
     return `<h2 class="cat-tit">${esc(c)}</h2>` + ps.map(p => `<div class="prod ${p.ativo ? '' : 'off'}">
       ${p.foto ? `<img class="ft" src="${esc(p.foto)}" alt="" loading="lazy">` : `<span class="ft">${esc(p.nome.charAt(0))}</span>`}
-      <div class="c"><strong>${esc(p.nome)}</strong><small>${brl(p.preco)} · ${textoTurnos(p)}${p.qtd_proteinas ? ` · escolhe ${p.qtd_proteinas} proteína${p.qtd_proteinas > 1 ? 's' : ''}` : ''}${p.esgotado ? ' · <b style="color:var(--brasa)">esgotado</b>' : ''}</small></div>
+      <div class="c"><strong>${esc(p.nome)}</strong><small>${brl(p.preco)} · ${textoTurnos(p)}${p.qtd_proteinas ? ` · escolhe ${p.qtd_proteinas > 1 ? 'até ' + p.qtd_proteinas + ' proteínas' : '1 proteína'}` : ''}${p.esgotado ? ' · <b style="color:var(--brasa)">esgotado</b>' : ''}</small></div>
       <div class="acoes">
         <button class="btn btn-pq ${p.esgotado ? 'btn-s' : 'btn-l'}" data-prflag="${p.id}" data-campo="esgotado" data-v="${p.esgotado ? 0 : 1}">${p.esgotado ? 'Voltou' : 'Esgotou'}</button>
         <label class="sw" title="Mostrar no cardápio"><input type="checkbox" data-prflag="${p.id}" data-campo="ativo" ${p.ativo ? 'checked' : ''} aria-label="Mostrar ${esc(p.nome)} no cardápio"><span></span></label>
@@ -819,8 +859,8 @@ async function flagProduto(id, campo, v) {
   if (!r) { p[campo] = antes; renderProdutos(); }
 }
 let editando = null, FOTOS = [];   // FOTOS: [{ url }] ou [{ blob, prev }]
-function abrirProduto(id) {
-  const p = D.produtos.find(x => x.id === id) || { nome: '', descricao: '', preco: '', categoria: '', turnos: [], qtd_proteinas: 0, sabores: [], conta_limite: false, destaque: false, foto: '', ativo: true };
+function abrirProduto(id, modelo) {
+  const p = D.produtos.find(x => x.id === id) || Object.assign({ nome: '', descricao: '', preco: '', categoria: '', turnos: [], qtd_proteinas: 0, sabores: [], conta_limite: false, destaque: false, foto: '', ativo: true, opcao_titulo: '' }, modelo || {});
   editando = p.id ? p : null;
   FOTOS = (p.fotos && p.fotos.length ? p.fotos : [p.foto]).filter(Boolean).map(url => ({ url }));
   $('#prodTitulo').textContent = p.id ? 'Editar produto' : 'Novo produto';
@@ -829,7 +869,7 @@ function abrirProduto(id) {
   $('#pCat').value = p.categoria;
   const ambos = !p.turnos || !p.turnos.length;
   $('#pAlmoco').checked = ambos || p.turnos.includes('almoco'); $('#pNoite').checked = ambos || p.turnos.includes('noite');
-  $('#pProt').value = String(p.qtd_proteinas || 0); $('#pSabores').value = (p.sabores || []).join(', ');
+  $('#pProt').value = String(p.qtd_proteinas || 0); $('#pSabores').value = (p.sabores || []).join(', '); $('#pOpTit').value = p.opcao_titulo || '';
   $('#pLimite').checked = !!p.conta_limite; $('#pDestaque').checked = !!p.destaque;
   $('#pFotoLink').value = ''; renderFotos(); $('#prodErro').textContent = '';
   $('#btnExcluirProd').hidden = !p.id;
@@ -841,6 +881,12 @@ function renderFotos() {
     + (FOTOS.length < 5 ? '<button type="button" class="add" id="btnFoto">+ Foto</button>' : '');
 }
 $('#btnNovoProd').onclick = () => abrirProduto(null);
+$('#btnNovoCombo').onclick = () => {
+  const latas = D.produtos.filter(p => p.categoria === 'Refrigerantes' && /lata/i.test(p.nome)).map(p => p.nome);
+  abrirProduto(null, { nome: 'Combo ', descricao: 'Marmita + refrigerante lata', categoria: 'Combos', turnos: ['almoco'], qtd_proteinas: 1, conta_limite: true,
+    opcao_titulo: 'Bebida', sabores: latas.length ? latas : ['Coca-Cola Lata', 'Guaraná Lata'] });
+  $('#prodTitulo').textContent = 'Novo combo';
+};
 $('#buscaProd').oninput = renderProdutos;
 $('#pFotos').onclick = e => {
   const b = e.target.closest('button'); if (!b) return;
@@ -876,7 +922,7 @@ $('#formProd').onsubmit = async e => {
     const fotos = FOTOS.map(f => f.url).filter(Boolean), foto = fotos[0] || '';
     const p = { id: editando ? editando.id : '', nome: $('#pNome').value.trim(), descricao: $('#pDesc').value.trim(), preco,
       categoria: $('#pCat').value.trim(), turnos: al && no ? [] : [al ? 'almoco' : 'noite'], qtd_proteinas: +$('#pProt').value,
-      sabores: $('#pSabores').value.split(',').map(s => s.trim()).filter(Boolean), conta_limite: $('#pLimite').checked,
+      sabores: $('#pSabores').value.split(',').map(s => s.trim()).filter(Boolean), opcao_titulo: $('#pOpTit').value.trim(), conta_limite: $('#pLimite').checked,
       destaque: $('#pDestaque').checked, foto, fotos, ativo: editando ? editando.ativo : true, esgotado: editando ? editando.esgotado : false,
       ordem: editando ? editando.ordem : D.produtos.length + 1 };
     const r = await chamar('admin_produto', { p_loja: L, p }, 'Produto salvo');
@@ -913,7 +959,7 @@ async function carregarFin(k) {
   [perIni, perFim] = intervalo(per);
   if (!$('#dData').value) $('#dData').value = D.hoje;
   $('#kpis').innerHTML = '<p class="vazio">Calculando…</p>';
-  const r = await chamar('admin_relatorio', { p_loja: L, p_ini: perIni, p_fim: perFim });
+  const r = await chamarDono('admin_relatorio', { p_loja: L, p_ini: perIni, p_fim: perFim });
   if (!r) return;
   REL = r; renderFin();
 }
@@ -1002,7 +1048,7 @@ $('#btnPer').onclick = () => carregarFin('custom');
 $('#formDesp').onsubmit = async e => {
   e.preventDefault();
   const v = numBR($('#dValor').value); if (v <= 0) return toast('Informe o valor', 'erro');
-  const r = await chamar('admin_despesa', { p_loja: L, p: { dia: $('#dData').value, descricao: $('#dDesc').value.trim(), categoria: $('#dCat').value, valor: v } }, 'Despesa lançada');
+  const r = await chamarDono('admin_despesa', { p_loja: L, p: { dia: $('#dData').value, descricao: $('#dDesc').value.trim(), categoria: $('#dCat').value, valor: v } }, 'Despesa lançada');
   if (r) { $('#dDesc').value = ''; $('#dValor').value = ''; carregarFin(); }
 };
 $('#btnCSV').onclick = () => {
@@ -1104,6 +1150,7 @@ function renderAjustes() {
         <button type="button" class="btn btn-l btn-pq" id="btnAddBairro" style="margin-top:8px">+ Adicionar bairro</button></div>
       ${op('Retirar no local', '', sw('retirada', c.retirada !== false))}
       ${op('Comer no local', '', sw('local', c.local !== false))}
+      ${op('Pedir WhatsApp de quem come no local', 'Desligado, o WhatsApp fica opcional (quem colocar junta pontos de fidelidade)', sw('tel_local', !!c.tel_local))}
     </div>
     <div class="cartao"><h2>Pagamento</h2>
       ${op('Pix', 'Mostra a chave Pix para o cliente copiar', sw('pagamentos.pix', c.pagamentos.pix !== false))}
@@ -1122,9 +1169,25 @@ function renderAjustes() {
       ${op('Encomenda com horário', 'O cliente agenda o horário, até antes de abrir', sw('encomenda', c.encomenda))}
     </div>
     <div class="cartao"><h2>Fidelidade</h2>
-      ${op('Ativar fidelidade', 'Conta os pedidos entregues pelo telefone do cliente', sw('fidelidade.ativo', c.fidelidade.ativo))}
-      <div class="duas"><label class="rot">A cada quantos pedidos<input class="campo" data-aj="fidelidade.a_cada" data-int value="${c.fidelidade.a_cada ?? 10}" inputmode="numeric"></label>
-      <label class="rot">Desconto do prêmio (R$)<input class="campo" data-aj="fidelidade.desconto" data-num value="${String(c.fidelidade.desconto ?? 10).replace('.', ',')}" inputmode="decimal"></label></div>
+      ${op('Ativar fidelidade', 'Você decide as regras abaixo. O WhatsApp do cliente funciona como o cartão fidelidade dele.', sw('fidelidade.ativo', c.fidelidade.ativo))}
+      <label class="rot">Como o cliente junta pontos<select class="campo" data-aj="fidelidade.modo">
+        <option value="pedidos" ${(c.fidelidade.modo || 'pedidos') === 'pedidos' ? 'selected' : ''}>Cada pedido vale 1 ponto</option>
+        <option value="itens" ${c.fidelidade.modo === 'itens' ? 'selected' : ''}>Cada marmita ou pratinho vale 1 ponto</option>
+        <option value="valor" ${c.fidelidade.modo === 'valor' ? 'selected' : ''}>Pontos pelo valor gasto</option></select></label>
+      <label class="rot">1 ponto a cada quantos reais gastos? <small style="font-weight:500;color:var(--cinza)">(só para "pontos pelo valor gasto")</small><input class="campo" data-aj="fidelidade.valor_ponto" data-num value="${String(c.fidelidade.valor_ponto ?? 10).replace('.', ',')}" inputmode="decimal"></label>
+      <div class="duas"><label class="rot">Pontos para ganhar o prêmio<input class="campo" data-aj="fidelidade.a_cada" data-int value="${c.fidelidade.a_cada ?? 10}" inputmode="numeric"></label>
+      <label class="rot">Pedido mínimo para contar (R$)<input class="campo" data-aj="fidelidade.minimo" data-num value="${String(c.fidelidade.minimo ?? 0).replace('.', ',')}" inputmode="decimal"></label></div>
+      <div class="duas"><label class="rot">Prêmio<select class="campo" data-aj="fidelidade.tipo_premio">
+        <option value="valor" ${(c.fidelidade.tipo_premio || 'valor') === 'valor' ? 'selected' : ''}>Desconto em reais</option>
+        <option value="pct" ${c.fidelidade.tipo_premio === 'pct' ? 'selected' : ''}>Desconto em %</option></select></label>
+      <label class="rot">Valor do prêmio<input class="campo" data-aj="fidelidade.desconto" data-num value="${String(c.fidelidade.desconto ?? 10).replace('.', ',')}" inputmode="decimal"></label></div>
+      <div class="rot">Quais pedidos contam</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <label class="chk" style="margin-top:6px"><input type="checkbox" data-aj="fidelidade.tipos.entrega" ${(c.fidelidade.tipos || {}).entrega !== false ? 'checked' : ''}> Entrega</label>
+        <label class="chk" style="margin-top:6px"><input type="checkbox" data-aj="fidelidade.tipos.retirada" ${(c.fidelidade.tipos || {}).retirada !== false ? 'checked' : ''}> Retirada</label>
+        <label class="chk" style="margin-top:6px"><input type="checkbox" data-aj="fidelidade.tipos.local" ${(c.fidelidade.tipos || {}).local !== false ? 'checked' : ''}> Comer no local</label>
+      </div>
+      <p style="font-size:12.5px;color:var(--cinza);margin-top:8px">Os pontos entram quando o pedido é marcado como Entregue. O prêmio sai sozinho no pedido seguinte.</p>
     </div>
     <div class="cartao"><h2>Cupons</h2>
       ${op('Aceitar cupons', 'Aparece um campo de cupom no pedido', sw('cupons', c.cupons))}
@@ -1136,14 +1199,20 @@ function renderAjustes() {
         <div style="display:flex;gap:10px;align-items:end"><label class="rot" style="flex:1">Pedido mínimo (R$)<input class="campo" id="cpMin" inputmode="decimal" value="0"></label><button class="btn btn-s" style="margin-bottom:1px">Criar cupom</button></div>
       </form>
     </div>
-    <div class="cartao"><h2>Senha do painel</h2>
-      <form id="formSenha"><div class="duas"><label class="rot">Nova senha<input class="campo" id="sNova" type="password" inputmode="numeric" minlength="6" maxlength="20" autocomplete="new-password" required></label>
+    <div class="cartao"><h2>Senhas</h2>
+      <p style="font-size:12.5px;color:var(--cinza)">A <b>senha do painel</b> é a dos funcionários. A <b>senha do dono</b> abre o Financeiro e é pedida para trocar qualquer senha.</p>
+      ${D.tem_senha_dono ? `<label class="rot">Senha atual do dono<input class="campo" id="sDono" type="password" inputmode="numeric" maxlength="20" autocomplete="off"></label>` : '<p style="font-size:13px;color:var(--brasa);font-weight:600;margin-top:8px">Primeiro crie a senha do dono abrindo o Financeiro.</p>'}
+      <form id="formSenha" style="margin-top:12px"><strong style="font-size:14px">Senha do painel (funcionários)</strong><div class="duas"><label class="rot">Nova senha<input class="campo" id="sNova" type="password" inputmode="numeric" minlength="6" maxlength="20" autocomplete="new-password" required></label>
       <label class="rot">Repita a senha<input class="campo" id="sRep" type="password" inputmode="numeric" minlength="6" maxlength="20" autocomplete="new-password" required></label></div>
-      <button class="btn btn-s" style="margin-top:12px">Trocar senha</button></form>
+      <button class="btn btn-s" style="margin-top:12px">Trocar senha do painel</button></form>
+      <form id="formSenhaDono" style="margin-top:16px"><strong style="font-size:14px">Senha do dono</strong><div class="duas"><label class="rot">Nova senha<input class="campo" id="sdNova" type="password" inputmode="numeric" minlength="6" maxlength="20" autocomplete="new-password" required></label>
+      <label class="rot">Repita a senha<input class="campo" id="sdRep" type="password" inputmode="numeric" minlength="6" maxlength="20" autocomplete="new-password" required></label></div>
+      <button class="btn btn-s" style="margin-top:12px">Trocar senha do dono</button></form>
     </div>`;
   renderCupons(); renderBairros(); atualizarBarraSalvar();
   $('#formCupom').onsubmit = criarCupom;
   $('#formSenha').onsubmit = trocarSenha;
+  $('#formSenhaDono').onsubmit = trocarSenhaDono;
 }
 function setPath(o, path, v) { const p = path.split('.'); let x = o; p.slice(0, -1).forEach(k => { x[k] = x[k] && typeof x[k] === 'object' ? x[k] : {}; x = x[k]; }); x[p[p.length - 1]] = v; }
 function atualizarBarraSalvar() { $('#barraSalvar').hidden = !ajMudou(); }
@@ -1189,9 +1258,66 @@ async function trocarSenha(e) {
   const a = $('#sNova').value, b = $('#sRep').value;
   if (a.length < 6) return toast('A senha precisa ter pelo menos 6 dígitos', 'erro');
   if (a !== b) return toast('As senhas não são iguais', 'erro');
-  const r = await chamar('admin_senha', { nova: a });
-  if (r) { sess.pin = a; SS.set(sess); toast('Senha trocada'); $('#sNova').value = ''; $('#sRep').value = ''; }
+  const pd = pinDonoAjustes(); if (!pd) return;
+  const r = await chamar('admin_senha', { nova: a, pin_dono: pd });
+  if (r) { sess.pin = a; SS.set(sess); dono = pd; toast('Senha do painel trocada'); $('#sNova').value = ''; $('#sRep').value = ''; }
 }
+function pinDonoAjustes() {
+  if (!D.tem_senha_dono) { toast('Primeiro crie a senha do dono abrindo o Financeiro.', 'erro'); return null; }
+  const v = ($('#sDono') && $('#sDono').value) || dono;
+  if (!v) { toast('Digite a senha atual do dono.', 'erro'); $('#sDono') && $('#sDono').focus(); return null; }
+  return v;
+}
+async function trocarSenhaDono(e) {
+  e.preventDefault();
+  const a = $('#sdNova').value, b = $('#sdRep').value;
+  if (a.length < 6) return toast('A senha precisa ter pelo menos 6 dígitos', 'erro');
+  if (a !== b) return toast('As senhas não são iguais', 'erro');
+  if (a === sess.pin) return toast('Use uma senha diferente da senha do painel', 'erro');
+  const pd = pinDonoAjustes(); if (!pd) return;
+  const r = await chamar('admin_senha_dono', { nova: a, pin_dono: pd });
+  if (r) { dono = a; toast('Senha do dono trocada'); $('#sdNova').value = ''; $('#sdRep').value = ''; if ($('#sDono')) $('#sDono').value = ''; }
+}
+
+/* ================= ÁREA DO DONO (financeiro) ================= */
+let dono = null;   // senha do dono: fica só na memória; recarregou ou saiu, pede de novo
+async function chamarDono(fn, args, okMsg) {
+  if (!dono) { abrirFin(); return null; }
+  const r = await chamar(fn, Object.assign({}, args, { pin_dono: dono }), okMsg);
+  if (!r && viewAtual === 'financeiro') { /* senha errada ou mudou */ }
+  return r;
+}
+function abrirFin() {
+  const travado = !dono;
+  $('#finTrava').hidden = !travado; $('#finConteudo').hidden = travado;
+  if (!travado) { carregarFin(); return; }
+  const criar = !D.tem_senha_dono;
+  $('#travaTit').textContent = criar ? 'Crie a senha do dono' : 'Área do dono';
+  $('#travaTxt').textContent = criar ? 'Só quem tiver esta senha vê o faturamento e as despesas. Use uma senha diferente da senha do painel.' : 'Faturamento e despesas só abrem com a senha do dono.';
+  $('#donoRep').hidden = !criar; $('#donoRep').required = criar;
+  $('#btnDono').textContent = criar ? 'Criar senha' : 'Abrir';
+  $('#donoSenha').value = ''; $('#donoRep').value = '';
+  setTimeout(() => $('#donoSenha').focus(), 50);
+}
+$('#formDono').onsubmit = async e => {
+  e.preventDefault();
+  const v = $('#donoSenha').value.trim(); if (!v) return;
+  const btn = $('#btnDono'); btn.disabled = true;
+  try {
+    if (!D.tem_senha_dono) {
+      if (v.length < 6) return toast('A senha precisa ter pelo menos 6 dígitos', 'erro');
+      if (v !== $('#donoRep').value.trim()) return toast('As senhas não são iguais', 'erro');
+      const r = await chamar('admin_senha_dono_criar', { nova: v }, 'Senha do dono criada');
+      if (!r) return;
+      D.tem_senha_dono = true;
+    } else {
+      const r = await chamar('admin_dono_ok', { pin_dono: v });
+      if (!r) return;
+    }
+    dono = v; abrirFin(); if (viewAtual === 'pedidos') renderPedidos();
+  } finally { btn.disabled = false; }
+};
+$('#btnTravarFin').onclick = () => { dono = null; abrirFin(); toast('Área do dono bloqueada'); };
 
 /* ================= CLIQUES ================= */
 document.addEventListener('click', async e => {
@@ -1207,6 +1333,8 @@ document.addEventListener('click', async e => {
   else if (d.pflag && b.tagName === 'BUTTON') flagProteina(d.pflag, d.campo, d.v === '1');
   else if (d.prflag && b.tagName === 'BUTTON') flagProduto(d.prflag, d.campo, d.v === '1');
   else if (d.todas) marcarTodas(d.todas, d.v === '1');
+  else if (d.tirarturno) { const p = D.proteinas.find(x => x.id === d.tirarturno); if (p && confirm(`Tirar "${p.nome}" do ${nomeTurno(D.config, d.t).toLowerCase()}?`)) mudarTurnosProteina(d.tirarturno, d.t, false); }
+  else if (d.memb) { const p = D.proteinas.find(x => x.id === d.memb); if (p) mudarTurnosProteina(d.memb, d.t, !(p.turnos || []).includes(d.t)); }
   else if (d.salvaracomp) {
     const t = d.salvaracomp, v = ($(`[data-acomp="${t}"]`).value || '').trim();
     const acomp = Object.assign({}, D.config.acompanhamentos || {}, { [t]: v });
@@ -1221,7 +1349,7 @@ document.addEventListener('click', async e => {
     const p = D.proteinas.find(x => x.id === d.delprot);
     if (p && confirm(`Excluir "${p.nome}" da lista?`)) { const r = await chamar('admin_excluir', { p_loja: L, p_tipo: 'proteina', p_id: p.id }, 'Proteína excluída'); if (r) { D.proteinas = D.proteinas.filter(x => x !== p); renderHoje(); } }
   }
-  else if (d.deldesp) { if (confirm('Excluir esta despesa?')) { const r = await chamar('admin_excluir', { p_loja: L, p_tipo: 'despesa', p_id: d.deldesp }, 'Despesa excluída'); if (r) carregarFin(); } }
+  else if (d.deldesp) { if (confirm('Excluir esta despesa?')) { const r = await chamarDono('admin_excluir', { p_loja: L, p_tipo: 'despesa', p_id: d.deldesp }, 'Despesa excluída'); if (r) carregarFin(); } }
   else if (d.delcupom) { if (confirm('Excluir este cupom?')) { const r = await chamar('admin_excluir', { p_loja: L, p_tipo: 'cupom', p_id: d.delcupom }, 'Cupom excluído'); if (r) { D.cupons = D.cupons.filter(x => x.id !== d.delcupom); renderCupons(); } } }
   else if (b.hasAttribute('data-fechar')) b.closest('.modal').hidden = true;
 });
@@ -1284,9 +1412,9 @@ function renderManual() {
   if (e) {
     const p = e.p, prots = D.proteinas.filter(x => x[t] && !x.esgotado);
     $('#mmEscolha').innerHTML = `<div class="mm-esc"><strong>${esc(p.nome)}</strong>
-      ${Array.from({ length: p.qtd_proteinas }, (_, i) => `<label class="rot">Proteína ${p.qtd_proteinas > 1 ? i + 1 : ''}<select class="campo" data-mmprot="${i}"><option value="">Escolha</option>${prots.map(x => `<option value="${x.id}" ${e.prots[i] === x.id ? 'selected' : ''}>${esc(x.nome)}</option>`).join('')}</select></label>`).join('')}
-      ${e.acs.length ? `<div class="rot">Acompanhamentos <small style="font-weight:500">(toque para tirar)</small></div><div class="mm-chips">${e.acs.map(a => `<button data-mmacomp="${esc(a)}" aria-pressed="${e.acomp.has(a)}">${esc(a.charAt(0).toUpperCase() + a.slice(1))}</button>`).join('')}</div>` : ''}
-      ${p.sabores && p.sabores.length ? `<label class="rot">Sabor<select class="campo" id="mmSabor"><option value="">Escolha</option>${p.sabores.map(x => `<option ${e.sabor === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>` : ''}
+      ${Array.from({ length: p.qtd_proteinas }, (_, i) => `<label class="rot">Proteína ${p.qtd_proteinas > 1 ? i + 1 + (i ? ' (opcional)' : '') : ''}<select class="campo" data-mmprot="${i}"><option value="">Escolha</option>${prots.map(x => `<option value="${x.id}" ${e.prots[i] === x.id ? 'selected' : ''}>${esc(x.nome)}</option>`).join('')}</select></label>`).join('')}
+      ${e.acs.length ? `<div class="rot">Acompanhamentos <small style="font-weight:500">(toque para marcar)</small></div><div class="mm-chips">${e.acs.map(a => `<button data-mmacomp="${esc(a)}" aria-pressed="${e.acomp.has(a)}">${esc(a.charAt(0).toUpperCase() + a.slice(1))}</button>`).join('')}</div>` : ''}
+      ${p.sabores && p.sabores.length ? `<label class="rot">${esc(p.opcao_titulo || 'Sabor')}<select class="campo" id="mmSabor"><option value="">Escolha</option>${p.sabores.map(x => `<option ${e.sabor === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>` : ''}
       <div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-l btn-pq" data-mmcancel>Cancelar</button><button class="btn btn-p btn-pq" data-mmok>Adicionar ao pedido</button></div></div>`;
   } else $('#mmEscolha').innerHTML = '';
   $('#mmItens').innerHTML = MM.itens.length ? MM.itens.map((it, i) => `<div class="mm-linha"><span class="n"><b>${it.qtd}x ${esc(it.nome)}</b>${it.det ? `<small>${esc(it.det)}</small>` : ''}</span><span>${brl(it.preco * it.qtd)}</span><button class="btn btn-l btn-pq" data-mmmenos="${i}" aria-label="Tirar um">−</button><button class="btn btn-l btn-pq" data-mmmais="${i}" aria-label="Mais um">+</button></div>`).join('') : '<p class="vazio" style="padding:10px 0">Nenhum item ainda.</p>';
@@ -1304,8 +1432,8 @@ function totalManual() {
 function addManual(p, prots, acomp, sabor) {
   const sem = MM.esc ? MM.esc.acs.filter(a => !MM.esc.acomp.has(a)) : [];
   const nomes = prots.map(id => (D.proteinas.find(x => x.id === id) || {}).nome || '');
-  const det = [nomes.join(' + '), sem.length ? (acomp && !acomp.length ? 'sem acompanhamentos' : 'sem ' + sem.join(', ').toLowerCase()) : '', sabor].filter(Boolean).join(' · ');
-  const k = [p.id, prots.join(','), sem.join(','), sabor].join('|');
+  const det = [nomes.join(' + '), Array.isArray(acomp) ? (acomp.length ? 'com ' + acomp.join(', ').toLowerCase() : 'sem acompanhamentos') : '', sabor && ((p.opcao_titulo ? p.opcao_titulo + ': ' : '') + sabor)].filter(Boolean).join(' · ');
+  const k = [p.id, prots.join(','), (acomp || []).join(','), sabor].join('|');
   const ex = MM.itens.find(x => x.k === k);
   if (ex) ex.qtd++; else MM.itens.push({ k, id: p.id, nome: p.nome, preco: Number(p.preco), qtd: 1, proteinas: prots, acomp, sabor, det });
 }
@@ -1326,15 +1454,15 @@ $('#mManual').addEventListener('click', async e => {
     const p = D.produtos.find(x => x.id === d.mmadd); if (!p) return;
     const acs = p.qtd_proteinas ? listaAcomp(MM.turno) : [];
     if (!p.qtd_proteinas && !(p.sabores && p.sabores.length)) { addManual(p, [], null, ''); MM.esc = null; }
-    else MM.esc = { p, prots: [], acs, acomp: new Set(acs), sabor: '' };
+    else MM.esc = { p, prots: [], acs, acomp: new Set(), sabor: '' };
     renderManual();
   }
   else if (d.mmacomp !== undefined) { const s = MM.esc.acomp; s.has(d.mmacomp) ? s.delete(d.mmacomp) : s.add(d.mmacomp); renderManual(); }
   else if (d.mmcancel !== undefined) { MM.esc = null; renderManual(); }
   else if (d.mmok !== undefined) {
     const e2 = MM.esc, p = e2.p, prots = e2.prots.filter(Boolean);
-    if (prots.length !== p.qtd_proteinas) return toast(p.qtd_proteinas > 1 ? `Escolha as ${p.qtd_proteinas} proteínas.` : 'Escolha a proteína.', 'erro');
-    if (p.sabores && p.sabores.length && !e2.sabor) return toast('Escolha o sabor.', 'erro');
+    if (prots.length < 1) return toast('Escolha pelo menos uma proteína.', 'erro');
+    if (p.sabores && p.sabores.length && !e2.sabor) return toast('Escolha ' + (p.opcao_titulo ? p.opcao_titulo.toLowerCase() : 'o sabor') + '.', 'erro');
     addManual(p, prots, e2.acs.length ? e2.acs.filter(a => e2.acomp.has(a)) : null, e2.sabor); MM.esc = null; renderManual();
   }
   else if (d.mmmenos !== undefined) { const it = MM.itens[+d.mmmenos]; it.qtd--; if (it.qtd <= 0) MM.itens.splice(+d.mmmenos, 1); renderManual(); }

@@ -59,8 +59,8 @@ const PASTA_FOTOS = 'Point da Sueli - Fotos';
 const ABAS = {
   Pedidos:   ['id', 'dia', 'numero', 'hora', 'criado_em', 'atualizado_em', 'turno', 'cliente', 'telefone', 'tipo', 'endereco', 'agendado',
               'resumo', 'subtotal', 'taxa', 'desconto', 'total', 'pagamento', 'troco', 'cupom', 'fidelidade', 'obs', 'status', 'codigo', 'itens'],
-  Produtos:  ['id', 'nome', 'descricao', 'preco', 'categoria', 'turnos', 'qtd_proteinas', 'sabores', 'conta_limite', 'foto', 'ativo', 'esgotado', 'destaque', 'ordem'],
-  Proteinas: ['id', 'nome', 'almoco', 'noite', 'esgotado', 'ordem'],
+  Produtos:  ['id', 'nome', 'descricao', 'preco', 'categoria', 'turnos', 'qtd_proteinas', 'sabores', 'conta_limite', 'foto', 'ativo', 'esgotado', 'destaque', 'ordem', 'opcao_titulo'],
+  Proteinas: ['id', 'nome', 'almoco', 'noite', 'esgotado', 'ordem', 'turnos'],
   Despesas:  ['id', 'dia', 'descricao', 'categoria', 'valor'],
   Cupons:    ['id', 'codigo', 'tipo', 'valor', 'minimo', 'ativo', 'usos'],
   Clientes:  ['telefone', 'nome', 'pedidos', 'entregues', 'desde_premio', 'ultimo_pedido']
@@ -78,7 +78,7 @@ const CONFIG_PADRAO = {
     noite:  { nome: 'Noite',  ativo: true, inicio: '17:00', fim: '22:00' }
   },
   entrega: { ativo: true, taxa: 0, bairros: [] }, retirada: true, local: true,
-  escolher_acomp: true,
+  escolher_acomp: true, tel_local: false,
   pagamentos: { pix: true, dinheiro: true, cartao: true },
   chave_pix: '', whatsapp: '85988397226',
   endereco: 'R. Antero de Quental, 301 – São Bento, Fortaleza',
@@ -87,8 +87,9 @@ const CONFIG_PADRAO = {
   msg_inicio: '', msg_fim: '',
   limite: { ativo: false, almoco: 50, noite: 50 },
   arte_abertura: true, pedir_de_novo: true, encomenda: false, cupons: false,
-  fidelidade: { ativo: false, a_cada: 10, desconto: 10 },
-  categorias: ['Marmitas', 'Pratinhos', 'Caldos', 'Porções', 'Sobremesas', 'Sucos', 'Refrigerantes']
+  fidelidade: { ativo: false, modo: 'pedidos', a_cada: 10, valor_ponto: 10, desconto: 10, tipo_premio: 'valor', minimo: 0,
+                tipos: { entrega: true, retirada: true, local: true } },
+  categorias: ['Combos', 'Marmitas', 'Pratinhos', 'Caldos', 'Porções', 'Sobremesas', 'Sucos', 'Refrigerantes']
 };
 
 /* =====================================================================
@@ -149,12 +150,12 @@ function setup() {
       ['Frevo PET', 'Garrafinha', 3, 'Refrigerantes', '', 0, '', false, 'img/pfrevo.jpg', false, 43]
     ];
     aba_('Produtos').getRange(2, 1, prod.length, ABAS.Produtos.length).setValues(prod.map(function (x) {
-      return [novoId_(), x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], true, false, x[9], x[10]];
+      return [novoId_(), x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], true, false, x[9], x[10], ''];
     }));
   }
   if (aba_('Proteinas').getLastRow() < 2) {
     const pr = ['Porco ao molho', 'Frango ao molho', 'Carne moída com batata', 'Fígado acebolado', 'Peito de frango à milanesa', 'Linguiça toscana'];
-    aba_('Proteinas').getRange(2, 1, pr.length, ABAS.Proteinas.length).setValues(pr.map(function (n, i) { return [novoId_(), n, true, true, false, i + 1]; }));
+    aba_('Proteinas').getRange(2, 1, pr.length, ABAS.Proteinas.length).setValues(pr.map(function (n, i) { return [novoId_(), n, true, true, false, i + 1, 'almoco,noite']; }));
   }
   pasta_();
   limparCache_();
@@ -192,14 +193,17 @@ const ADMIN = {
   admin_produto: function (b) { return comTrava_(function () { return salvarProduto_(b.p || {}); }); },
   admin_proteina: function (b) { return comTrava_(function () { return salvarProteina_(b.p || {}); }); },
   admin_cupom: function (b) { return comTrava_(function () { return salvarCupom_(b.p || {}); }); },
-  admin_despesa: function (b) { return comTrava_(function () { return salvarDespesa_(b.p || {}); }); },
   admin_excluir: function (b) { return comTrava_(function () { return excluir_(b.p_tipo, b.p_id); }); },
   admin_flag: function (b) { return comTrava_(function () { return flag_(b.p_tipo, b.p_id, b.p_campo, b.p_valor); }); },
   admin_flags: function (b) { return comTrava_(function () { return flags_(b.p_lista || []); }); },
   admin_config: function (b) { return comTrava_(function () { return salvarConfig_(b.p, b.p_nome); }); },
-  admin_relatorio: function (b) { return relatorio_(String(b.p_ini), String(b.p_fim)); },
   admin_foto: function (b) { return { ok: true, url: enviarFoto_(b) }; },
-  admin_senha: function (b) { return trocarSenha_(b.nova); },
+  admin_senha_dono_criar: function (b) {   // só funciona enquanto o dono ainda não criou a senha dele
+    if (props_().getProperty('pin_dono')) return { ok: false, erro: 'A senha do dono já existe.' };
+    const nova = String(b.nova || ''); if (nova.length < 6) return { ok: false, erro: 'A senha precisa ter pelo menos 6 dígitos.' };
+    if (nova === String(props_().getProperty('pin') || PIN_INICIAL)) return { ok: false, erro: 'Use uma senha diferente da senha do painel.' };
+    props_().setProperty('pin_dono', nova); return { ok: true };
+  },
   admin_pedido_manual: function (b) { return comTrava_(function () { return criarPedido_(b.p || {}, true); }); }
 };
 
@@ -207,14 +211,20 @@ function executar_(b) {
   try {
     const acao = String(b.acao || '');
     if (PUBLICAS[acao]) return PUBLICAS[acao](b);
-    if (ADMIN[acao]) {
+    if (ADMIN[acao] || DONO[acao]) {
       const cc = CacheService.getScriptCache(), falhas = parseInt(cc.get('pin_falhas') || '0', 10);
       if (falhas >= 10) return { ok: false, erro: 'Muitas tentativas erradas. Aguarde 10 minutos.' };
       if (String(b.pin || '') !== String(props_().getProperty('pin') || PIN_INICIAL)) {
         cc.put('pin_falhas', String(falhas + 1), 600);   // trava por 10 min depois de 10 erros
         return { ok: false, erro: 'PIN inválido' };
       }
-      return ADMIN[acao](b);
+      if (DONO[acao] || (acao === 'admin_excluir' && b.p_tipo === 'despesa')) {
+        const pd = props_().getProperty('pin_dono');
+        if (!pd) return { ok: false, erro: 'SEM_SENHA_DONO' };
+        if (String(b.pin_dono || '') !== pd) { cc.put('pin_falhas', String(falhas + 1), 600); return { ok: false, erro: 'Senha do dono inválida' }; }
+        if (DONO[acao]) return DONO[acao](b);
+      }
+      return ADMIN[acao] ? ADMIN[acao](b) : { ok: false, erro: 'Ação desconhecida' };
     }
     return { ok: false, erro: 'Ação desconhecida' };
   } catch (err) {
@@ -287,7 +297,8 @@ function criarPedido_(p, manual) {
   const nome = String(p.cliente || '').trim().slice(0, 60) || (manual ? 'Balcão' : '');
   const tel = String(p.telefone || '').replace(/\D/g, '');
   if (nome.length < 2) return erro('Informe seu nome.');
-  if (manual ? (tel && (tel.length < 10 || tel.length > 13)) : (tel.length < 10 || tel.length > 13)) return erro('Informe o telefone com DDD.');
+  const telOpcional = manual || (String(p.tipo || '') === 'local' && !sim_(cfg.tel_local, false));   // comer no local: WhatsApp é opcional
+  if (telOpcional ? (tel && (tel.length < 10 || tel.length > 13)) : (tel.length < 10 || tel.length > 13)) return erro('Informe o telefone com DDD.');
 
   const tipo = String(p.tipo || '');
   let endereco = String(p.endereco || '').trim().slice(0, 250), taxa = 0;
@@ -320,7 +331,7 @@ function criarPedido_(p, manual) {
     let det = '';
     if (pr.qtd_proteinas > 0) {
       const ids = Array.isArray(it.proteinas) ? it.proteinas : [];
-      if (ids.length !== pr.qtd_proteinas) return erro('Escolha ' + pr.qtd_proteinas + ' proteína(s) para ' + pr.nome + '.');
+      if (ids.length < 1 || ids.length > pr.qtd_proteinas) return erro(pr.qtd_proteinas === 1 ? 'Escolha a proteína de ' + pr.nome + '.' : 'Escolha de 1 a ' + pr.qtd_proteinas + ' proteínas para ' + pr.nome + '.');   // o cliente escolhe ATÉ o máximo
       for (let k = 0; k < ids.length; k++) {
         const x = proteinas[String(ids[k])];
         if (!x || x.esgotado || !x[turno]) return erro('Uma proteína escolhida acabou. Escolha outra, por favor.');
@@ -329,13 +340,12 @@ function criarPedido_(p, manual) {
     }
     if (pr.qtd_proteinas > 0 && acompLista.length && Array.isArray(it.acomp)) {
       const esc = it.acomp.map(function (a) { return norm_(a); });
-      const sem = acompLista.filter(function (a) { return esc.indexOf(norm_(a)) < 0; });
-      if (sem.length === acompLista.length) det += (det ? ' · ' : '') + 'sem acompanhamentos';
-      else if (sem.length) det += (det ? ' · ' : '') + 'sem ' + sem.join(', ').toLowerCase();
+      const com = acompLista.filter(function (a) { return esc.indexOf(norm_(a)) >= 0; });
+      det += (det ? ' · ' : '') + (com.length ? 'com ' + com.join(', ').toLowerCase() : 'sem acompanhamentos');
     }
     if (pr.sabores.length) {
-      if (pr.sabores.indexOf(String(it.sabor || '')) < 0) return erro('Escolha o sabor de ' + pr.nome + '.');
-      det += (det ? ' · ' : '') + it.sabor;
+      if (pr.sabores.indexOf(String(it.sabor || '')) < 0) return erro('Escolha ' + (pr.opcao_titulo ? pr.opcao_titulo.toLowerCase() : 'o sabor') + ' de ' + pr.nome + '.');
+      det += (det ? ' · ' : '') + (pr.opcao_titulo ? pr.opcao_titulo + ': ' : '') + it.sabor;
     }
     itens.push({ id: pr.id, nome: pr.nome, qtd: qtd, preco: pr.preco, detalhes: det, obs: String(it.obs || '').slice(0, 120), lim: pr.conta_limite, cat: pr.categoria });
     sub += pr.preco * qtd;
@@ -362,7 +372,7 @@ function criarPedido_(p, manual) {
   let fid = false;
   const cli = tel ? cliente_(tel) : null;
   if (tel && cfg.fidelidade && sim_(cfg.fidelidade.ativo, false) && cli && cli.desde_premio >= Math.max(parseInt(cfg.fidelidade.a_cada, 10) || 10, 1)) {
-    fid = true; desc += num_(cfg.fidelidade.desconto);
+    fid = true; desc += cfg.fidelidade.tipo_premio === 'pct' ? Math.round(sub * num_(cfg.fidelidade.desconto)) / 100 : num_(cfg.fidelidade.desconto);
   }
   desc = Math.min(desc, sub);
   const total = Math.round((sub + taxa - desc) * 100) / 100;
@@ -421,16 +431,25 @@ function fidelidadeStatus_(telefone) {
   const cfg = config_(), tel = String(telefone || '').replace(/\D/g, '');
   if (!cfg.fidelidade || !sim_(cfg.fidelidade.ativo, false) || tel.length < 10) return { ok: true, ativo: false };
   const c = cliente_(tel);
-  return { ok: true, ativo: true, a_cada: Math.max(parseInt(cfg.fidelidade.a_cada, 10) || 10, 1),
-           desconto: num_(cfg.fidelidade.desconto), feitos: c ? c.desde_premio : 0 };
+  const f = cfg.fidelidade;
+  return { ok: true, ativo: true, a_cada: Math.max(parseInt(f.a_cada, 10) || 10, 1), modo: f.modo || 'pedidos', valor_ponto: num_(f.valor_ponto) || 10,
+           desconto: num_(f.desconto), tipo_premio: f.tipo_premio || 'valor', minimo: num_(f.minimo), tipos: f.tipos || {}, feitos: c ? c.desde_premio : 0 };
 }
 
 /* =====================================================================
    PAINEL
    ===================================================================== */
+function cabecalhos_() {   // garante o nome das colunas novas nas abas que já existiam
+  Object.keys(ABAS).forEach(function (nome) {
+    const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(nome); if (!sh) return;
+    const cab = ABAS[nome], at = sh.getRange(1, 1, 1, cab.length).getValues()[0];
+    if (cab.some(function (c, i) { return at[i] !== c; })) sh.getRange(1, 1, 1, cab.length).setValues([cab]).setFontWeight('bold');
+  });
+}
 function adminDados_() {
+  if (props_().getProperty('cab_v') !== '3') { cabecalhos_(); props_().setProperty('cab_v', '3'); }
   const cfg = config_(), h = hoje_(cfg);
-  return { ok: true, nome: nome_(), config: cfg, hoje: h.dia, agora: h.iso, turno_atual: turnoEm_(cfg, h.hm),
+  return { ok: true, nome: nome_(), config: cfg, tem_senha_dono: !!props_().getProperty('pin_dono'), hoje: h.dia, agora: h.iso, turno_atual: turnoEm_(cfg, h.hm),
     vendidos: vendidos_(h.dia),
     produtos: ler_('Produtos').map(prod_).sort(porOrdem_),
     proteinas: ler_('Proteinas').map(prot_).sort(porOrdem_),
@@ -451,7 +470,7 @@ function adminStatus_(id, status) {
   const antes = p.status;
   atualizarLinha_('Pedidos', p._row, { status: status, atualizado_em: new Date().toISOString() });
   p.status = status;
-  if (antes !== status && (antes === 'Entregue' || status === 'Entregue')) ajustarEntregues_(p.telefone, status === 'Entregue' ? 1 : -1);
+  if (antes !== status && (antes === 'Entregue' || status === 'Entregue')) ajustarEntregues_(p.telefone, status === 'Entregue' ? 1 : -1, pontosDoPedido_(config_(), p));
   guardarCache_('p_' + p.id, { codigo: p.codigo, status: status, numero: p.numero, tipo: p.tipo }, 21600);
   if (antes === 'Cancelado' || status === 'Cancelado') {
     const doDia = pedidosDoDia_(p.dia);
@@ -473,7 +492,7 @@ function salvarProduto_(p) {
     qtd_proteinas: Math.min(Math.max(parseInt(p.qtd_proteinas, 10) || 0, 0), 5), sabores: lista_(p.sabores).map(seguro_).join(', '),
     conta_limite: sim_(p.conta_limite, false), foto: (Array.isArray(p.fotos) ? p.fotos : [p.foto]).map(function (u) { return String(u || '').replace(/\|/g, '').trim(); }).filter(Boolean).slice(0, 5).join('|'),
     ativo: sim_(p.ativo, true), esgotado: sim_(p.esgotado, false),
-    destaque: sim_(p.destaque, false), ordem: parseInt(p.ordem, 10) || 0
+    destaque: sim_(p.destaque, false), ordem: parseInt(p.ordem, 10) || 0, opcao_titulo: seguro_(String(p.opcao_titulo || '').trim().slice(0, 30))
   };
   if (ex) atualizarLinha_('Produtos', ex._row, o);
   else aba_('Produtos').appendRow(ABAS.Produtos.map(function (c) { return o[c]; }));
@@ -485,8 +504,12 @@ function salvarProteina_(p) {
   const nome = String(p.nome || '').trim();
   if (!nome) return { ok: false, erro: 'Informe o nome.' };
   const ex = p.id ? ler_('Proteinas').filter(function (x) { return String(x.id) === String(p.id); })[0] : null;
-  const o = { id: ex ? ex.id : novoId_(), nome: seguro_(nome.slice(0, 60)), almoco: sim_(p.almoco, true), noite: sim_(p.noite, true),
-              esgotado: sim_(p.esgotado, false), ordem: parseInt(p.ordem, 10) || 0 };
+  let tur = lista_(p.turnos).filter(function (t) { return t === 'almoco' || t === 'noite'; });
+  if (p.turnos === undefined || p.turnos === null) tur = ['almoco', 'noite'];
+  if (!tur.length) return { ok: false, erro: 'Escolha pelo menos um turno (almoço ou noite).' };
+  const o = { id: ex ? ex.id : novoId_(), nome: seguro_(nome.slice(0, 60)),
+              almoco: tur.indexOf('almoco') >= 0 && sim_(p.almoco, true), noite: tur.indexOf('noite') >= 0 && sim_(p.noite, true),
+              esgotado: sim_(p.esgotado, false), ordem: parseInt(p.ordem, 10) || 0, turnos: tur.join(',') };
   if (ex) atualizarLinha_('Proteinas', ex._row, o);
   else aba_('Proteinas').appendRow(ABAS.Proteinas.map(function (c) { return o[c]; }));
   limparCache_();
@@ -584,6 +607,17 @@ function enviarFoto_(b) {
   return 'https://drive.google.com/thumbnail?id=' + arq.getId() + '&sz=w900';
 }
 
+// Ações que só o dono faz (financeiro e senhas): pedem a senha do dono além da senha do painel
+const DONO = {
+  admin_relatorio: function (b) { return relatorio_(String(b.p_ini), String(b.p_fim)); },
+  admin_despesa: function (b) { return comTrava_(function () { return salvarDespesa_(b.p || {}); }); },
+  admin_dono_ok: function () { return { ok: true }; },
+  admin_senha: function (b) { return trocarSenha_(b.nova); },
+  admin_senha_dono: function (b) {
+    const nova = String(b.nova || ''); if (nova.length < 6) return { ok: false, erro: 'A senha precisa ter pelo menos 6 dígitos.' };
+    props_().setProperty('pin_dono', nova); return { ok: true };
+  }
+};
 function trocarSenha_(nova) {
   nova = String(nova || '');
   if (nova.length < 6) return { ok: false, erro: 'A senha precisa ter pelo menos 6 dígitos.' };
@@ -664,9 +698,21 @@ function registrarCliente_(c, tel, nome, dia, usouPremio) {
   if (c) atualizarLinha_('Clientes', c._row, { nome: seguro_(nome), pedidos: c.pedidos + 1, ultimo_pedido: dia, desde_premio: usouPremio ? 0 : c.desde_premio });
   else aba_('Clientes').appendRow([tel, seguro_(nome), 1, 0, 0, dia]);
 }
-function ajustarEntregues_(tel, d) {
+function ajustarEntregues_(tel, d, pontos) {
+  if (!tel) return;
   const c = cliente_(String(tel)); if (!c) return;
-  atualizarLinha_('Clientes', c._row, { entregues: Math.max(c.entregues + d, 0), desde_premio: Math.max(c.desde_premio + d, 0) });
+  atualizarLinha_('Clientes', c._row, { entregues: Math.max(c.entregues + d, 0), desde_premio: Math.max(c.desde_premio + d * (pontos || 0), 0) });
+}
+// Quantos pontos de fidelidade um pedido vale — regras que o dono escolhe em Ajustes
+function pontosDoPedido_(cfg, p) {
+  const f = cfg.fidelidade || {};
+  if (p.fidelidade) return 0;                                        // pedido que usou o prêmio não conta
+  const tipos = f.tipos || {};
+  if (tipos[p.tipo] === false) return 0;                             // tipo de pedido que o dono não quis contar
+  if (num_(p.subtotal) < num_(f.minimo)) return 0;                   // abaixo do valor mínimo
+  if (f.modo === 'valor') return Math.floor(num_(p.subtotal) / Math.max(num_(f.valor_ponto) || 10, 1));
+  if (f.modo === 'itens') return (p.itens || []).reduce(function (s, i) { return s + (i.lim ? Number(i.qtd) || 0 : 0); }, 0);
+  return 1;
 }
 
 /* =====================================================================
@@ -701,10 +747,13 @@ function prod_(o) {
   return { id: String(o.id), nome: String(o.nome), descricao: String(o.descricao || ''), preco: num_(o.preco),
     categoria: String(o.categoria || 'Outros'), turnos: lista_(o.turnos), qtd_proteinas: parseInt(o.qtd_proteinas, 10) || 0,
     sabores: lista_(o.sabores), conta_limite: sim_(o.conta_limite, false), foto: String(o.foto || '').split('|')[0], fotos: String(o.foto || '').split('|').filter(Boolean), ativo: sim_(o.ativo, true),
-    esgotado: sim_(o.esgotado, false), destaque: sim_(o.destaque, false), ordem: parseInt(o.ordem, 10) || 0 };
+    esgotado: sim_(o.esgotado, false), destaque: sim_(o.destaque, false), ordem: parseInt(o.ordem, 10) || 0, opcao_titulo: String(o.opcao_titulo || '') };
 }
 function prot_(o) {
-  return { id: String(o.id), nome: String(o.nome), almoco: sim_(o.almoco, true), noite: sim_(o.noite, true),
+  let tur = lista_(o.turnos).filter(function (t) { return t === 'almoco' || t === 'noite'; });
+  if (!tur.length) tur = ['almoco', 'noite'];   // proteínas antigas: valem nos dois turnos
+  return { id: String(o.id), nome: String(o.nome), turnos: tur,
+           almoco: tur.indexOf('almoco') >= 0 && sim_(o.almoco, true), noite: tur.indexOf('noite') >= 0 && sim_(o.noite, true),
            esgotado: sim_(o.esgotado, false), ordem: parseInt(o.ordem, 10) || 0 };
 }
 function cupom_(o) {
