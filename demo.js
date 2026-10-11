@@ -59,7 +59,7 @@ const PASTA_FOTOS = 'Point da Sueli - Fotos';
 const ABAS = {
   Pedidos:   ['id', 'dia', 'numero', 'hora', 'criado_em', 'atualizado_em', 'turno', 'cliente', 'telefone', 'tipo', 'endereco', 'agendado',
               'resumo', 'subtotal', 'taxa', 'desconto', 'total', 'pagamento', 'troco', 'cupom', 'fidelidade', 'obs', 'status', 'codigo', 'itens'],
-  Produtos:  ['id', 'nome', 'descricao', 'preco', 'categoria', 'turnos', 'qtd_proteinas', 'sabores', 'conta_limite', 'foto', 'ativo', 'esgotado', 'destaque', 'ordem', 'opcao_titulo'],
+  Produtos:  ['id', 'nome', 'descricao', 'preco', 'categoria', 'turnos', 'qtd_proteinas', 'sabores', 'conta_limite', 'foto', 'ativo', 'esgotado', 'destaque', 'ordem', 'opcao_titulo', 'sabores_off'],
   Proteinas: ['id', 'nome', 'almoco', 'noite', 'esgotado', 'ordem', 'turnos'],
   Despesas:  ['id', 'dia', 'descricao', 'categoria', 'valor'],
   Cupons:    ['id', 'codigo', 'tipo', 'valor', 'minimo', 'ativo', 'usos'],
@@ -150,7 +150,7 @@ function setup() {
       ['Frevo PET', 'Garrafinha', 3, 'Refrigerantes', '', 0, '', false, 'img/pfrevo.jpg', false, 43]
     ];
     aba_('Produtos').getRange(2, 1, prod.length, ABAS.Produtos.length).setValues(prod.map(function (x) {
-      return [novoId_(), x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], true, false, x[9], x[10], ''];
+      return [novoId_(), x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], true, false, x[9], x[10], '', ''];
     }));
   }
   if (aba_('Proteinas').getLastRow() < 2) {
@@ -344,6 +344,7 @@ function criarPedido_(p, manual) {
       det += (det ? ' · ' : '') + (com.length ? 'com ' + com.join(', ').toLowerCase() : 'sem acompanhamentos');
     }
     if (pr.sabores.length) {
+      if (pr.sabores_off.indexOf(String(it.sabor || '')) >= 0) return erro('O sabor ' + it.sabor + ' de ' + pr.nome + ' acabou. Escolha outro, por favor.');
       if (pr.sabores.indexOf(String(it.sabor || '')) < 0) return erro('Escolha ' + (pr.opcao_titulo ? pr.opcao_titulo.toLowerCase() : 'o sabor') + ' de ' + pr.nome + '.');
       det += (det ? ' · ' : '') + (pr.opcao_titulo ? pr.opcao_titulo + ': ' : '') + it.sabor;
     }
@@ -447,7 +448,7 @@ function cabecalhos_() {   // garante o nome das colunas novas nas abas que já 
   });
 }
 function adminDados_() {
-  if (props_().getProperty('cab_v') !== '3') { cabecalhos_(); props_().setProperty('cab_v', '3'); }
+  if (props_().getProperty('cab_v') !== '4') { cabecalhos_(); props_().setProperty('cab_v', '4'); }
   const cfg = config_(), h = hoje_(cfg);
   return { ok: true, nome: nome_(), config: cfg, tem_senha_dono: !!props_().getProperty('pin_dono'), hoje: h.dia, agora: h.iso, turno_atual: turnoEm_(cfg, h.hm),
     vendidos: vendidos_(h.dia),
@@ -492,7 +493,8 @@ function salvarProduto_(p) {
     qtd_proteinas: Math.min(Math.max(parseInt(p.qtd_proteinas, 10) || 0, 0), 5), sabores: lista_(p.sabores).map(seguro_).join(', '),
     conta_limite: sim_(p.conta_limite, false), foto: (Array.isArray(p.fotos) ? p.fotos : [p.foto]).map(function (u) { return String(u || '').replace(/\|/g, '').trim(); }).filter(Boolean).slice(0, 5).join('|'),
     ativo: sim_(p.ativo, true), esgotado: sim_(p.esgotado, false),
-    destaque: sim_(p.destaque, false), ordem: parseInt(p.ordem, 10) || 0, opcao_titulo: seguro_(String(p.opcao_titulo || '').trim().slice(0, 30))
+    destaque: sim_(p.destaque, false), ordem: parseInt(p.ordem, 10) || 0, opcao_titulo: seguro_(String(p.opcao_titulo || '').trim().slice(0, 30)),
+    sabores_off: lista_(p.sabores_off).filter(function (x) { return lista_(p.sabores).indexOf(x) >= 0; }).map(seguro_).join(', ')
   };
   if (ex) atualizarLinha_('Produtos', ex._row, o);
   else aba_('Produtos').appendRow(ABAS.Produtos.map(function (c) { return o[c]; }));
@@ -747,7 +749,7 @@ function prod_(o) {
   return { id: String(o.id), nome: String(o.nome), descricao: String(o.descricao || ''), preco: num_(o.preco),
     categoria: String(o.categoria || 'Outros'), turnos: lista_(o.turnos), qtd_proteinas: parseInt(o.qtd_proteinas, 10) || 0,
     sabores: lista_(o.sabores), conta_limite: sim_(o.conta_limite, false), foto: String(o.foto || '').split('|')[0], fotos: String(o.foto || '').split('|').filter(Boolean), ativo: sim_(o.ativo, true),
-    esgotado: sim_(o.esgotado, false), destaque: sim_(o.destaque, false), ordem: parseInt(o.ordem, 10) || 0, opcao_titulo: String(o.opcao_titulo || '') };
+    esgotado: sim_(o.esgotado, false), destaque: sim_(o.destaque, false), ordem: parseInt(o.ordem, 10) || 0, opcao_titulo: String(o.opcao_titulo || ''), sabores_off: lista_(o.sabores_off) };
 }
 function prot_(o) {
   let tur = lista_(o.turnos).filter(function (t) { return t === 'almoco' || t === 'noite'; });

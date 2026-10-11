@@ -443,7 +443,10 @@ function motivoIndisp(p) {
   if (p.esgotado) return 'Esgotado';
   if (p.conta_limite && cfg().limite && cfg().limite.ativo && restantes(turno) <= 0 && !qtdNoCarrinho(p.id)) return 'Esgotado hoje';
   if (p.qtd_proteinas > 0 && !protsDisp(turno).length) return 'Sem proteínas hoje';
+  if ((p.sabores || []).length && !saboresDisp(p).length) return 'Esgotado hoje';
   return '';
+}
+function saboresDisp(p) { const off = p.sabores_off || []; return (p.sabores || []).filter(s => !off.includes(s));
 }
 
 /* ================= RENDER ================= */
@@ -596,7 +599,9 @@ function abrirItem(p) {
   $('#protTitulo').textContent = p.qtd_proteinas === 1 ? 'Escolha a proteína' : `Escolha até ${p.qtd_proteinas} proteínas`;
   $('#blocoSabor').hidden = !(p.sabores && p.sabores.length);
   $('#saborTitulo').textContent = p.opcao_titulo || 'Sabor';
-  $('#saborLista').innerHTML = (p.sabores || []).map(s => `<button class="opcao" data-sabor="${esc(s)}" aria-pressed="false">${esc(s)}</button>`).join('');
+  $('#saborLista').innerHTML = (p.sabores || []).map(s => (p.sabores_off || []).includes(s)
+    ? `<span class="opcao" style="opacity:.45;text-decoration:line-through" title="Acabou hoje">${esc(s)}</span>`
+    : `<button class="opcao" data-sabor="${esc(s)}" aria-pressed="false">${esc(s)}</button>`).join('');
   $('#itemObs').value = ''; $('#itemErro').textContent = '';
   renderEscolhas(); abrir('#mItem');
 }
